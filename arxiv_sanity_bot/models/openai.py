@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Any
 
@@ -17,7 +18,30 @@ logger = get_logger(__name__)
 class OpenAI(LLM):
 
     def __init__(self):
-        self._client = openai.OpenAI()
+        # Support for DeepSeek API and other OpenAI-compatible APIs
+        self._provider = os.environ.get("LLM_PROVIDER", "openai").lower()
+        self._api_key = os.environ.get("OPENAI_API_KEY")
+        self._base_url = None
+        self._model = "gpt-5-mini"
+
+        if self._provider == "deepseek":
+            self._api_key = os.environ.get("DEEPSEEK_API_KEY") or self._api_key
+            self._base_url = os.environ.get(
+                "DEEPSEEK_API_BASE", "https://api.deepseek.com"
+            )
+            self._model = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+            logger.info(f"Using DeepSeek API with model: {self._model}")
+        else:
+            logger.info(f"Using OpenAI API with model: {self._model}")
+
+        # Initialize client with appropriate base_url if specified
+        if self._base_url:
+            self._client = openai.OpenAI(
+                api_key=self._api_key,
+                base_url=self._base_url,
+            )
+        else:
+            self._client = openai.OpenAI(api_key=self._api_key)
 
     def summarize_abstract(self, abstract: str) -> str:
         summary = ""
@@ -61,11 +85,11 @@ class OpenAI(LLM):
                 )
         else:
             logger.critical(
-                f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}",
+                f"{self._provider.upper()} could not successfully generate a tweet after {CHATGPT_N_TRIALS}",
                 extra={"abstract": abstract},
             )
             raise FatalError(
-                f"OpenAI could not successfully generate a tweet after {CHATGPT_N_TRIALS}"
+                f"{self._provider.upper()} could not successfully generate a tweet after {CHATGPT_N_TRIALS}"
             )
 
         return summary
@@ -97,10 +121,13 @@ class OpenAI(LLM):
         for i in range(CHATGPT_N_TRIALS):
 
             try:
-                logger.debug("Calling OpenAI API", extra={"history": history})
+                logger.debug(
+                    f"Calling {self._provider.upper()} API",
+                    extra={"history": history, "model": self._model},
+                )
 
                 completion = self._client.chat.completions.create(
-                    model="gpt-5-mini",
+                    model=self._model,
                     messages=history,
                 )
             except Exception as e:
@@ -115,5 +142,9 @@ class OpenAI(LLM):
                 sentence = completion.choices[0].message.content.strip()
                 return sentence
 
-        logger.critical(f"Calling OpenAI failed after {CHATGPT_N_TRIALS} attempts")
-        raise FatalError(f"Calling OpenAI failed after {CHATGPT_N_TRIALS} attempts")
+        logger.critical(
+            f"Calling {self._provider.upper()} failed after {CHATGPT_N_TRIALS} attempts"
+        )
+        raise FatalError(
+            f"Calling {self._provider.upper()} failed after {CHATGPT_N_TRIALS} attempts"
+        )

@@ -138,10 +138,23 @@ def _fetch_from_arxiv(
         logger.debug("Fetching from Arxiv API", extra={"params": params})
 
         try:
-            response = requests.get(
-                "http://export.arxiv.org/api/query", params=params, timeout=30
-            )
-            response.raise_for_status()
+            # Add retry logic for rate limiting (429)
+            max_retries = 3
+            for attempt in range(max_retries):
+                response = requests.get(
+                    "http://export.arxiv.org/api/query", params=params, timeout=30
+                )
+                if response.status_code == 429:
+                    wait_time = (attempt + 1) * 5  # 5, 10, 15 seconds
+                    logger.warning(f"ArXiv rate limit hit, waiting {wait_time}s...")
+                    time.sleep(wait_time)
+                    continue
+                response.raise_for_status()
+                break
+            else:
+                # All retries exhausted
+                logger.error("ArXiv API rate limit persisted after retries")
+                break
 
             root = ET.fromstring(response.content)
             entries = root.findall("{http://www.w3.org/2005/Atom}entry")
@@ -213,7 +226,8 @@ def _fetch_from_arxiv(
                 break
 
             start += max_results
-            time.sleep(1)
+            # arXiv API recommends 3 seconds between requests
+            time.sleep(3)
 
         except ArxivZeroResultsError:
             raise
