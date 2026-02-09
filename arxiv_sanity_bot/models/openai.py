@@ -19,10 +19,13 @@ class OpenAI(LLM):
 
     def __init__(self):
         # Support for DeepSeek API and other OpenAI-compatible APIs
-        self._provider = os.environ.get("LLM_PROVIDER", "openai").lower()
+        provider_raw = os.environ.get("LLM_PROVIDER", "openai")
+        self._provider = provider_raw.lower().strip()
         self._api_key = os.environ.get("OPENAI_API_KEY")
         self._base_url = None
         self._model = "gpt-5-mini"
+
+        logger.info(f"LLM_PROVIDER raw: '{provider_raw}', processed: '{self._provider}'")
 
         if self._provider == "deepseek":
             deepseek_key = os.environ.get("DEEPSEEK_API_KEY")

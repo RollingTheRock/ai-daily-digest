@@ -13,8 +13,14 @@ class ContentProcessor:
     """Process content with LLM for summaries and insights (lightweight, token-efficient)."""
 
     def __init__(self):
-        self._client = OpenAI()
+        self._client: OpenAI | None = None
         self._provider = os.environ.get("LLM_PROVIDER", "openai").lower()
+
+    def _get_client(self) -> OpenAI:
+        """Lazy initialization of OpenAI client."""
+        if self._client is None:
+            self._client = OpenAI()
+        return self._client
 
     def generate_daily_insight(
         self,
@@ -58,7 +64,7 @@ class ContentProcessor:
         ]
 
         try:
-            insight = self._client._call_openai(history)
+            insight = self._get_client()._call_openai(history)
             return insight.strip() if insight else "今日 AI 领域呈现多元发展态势。"
         except Exception as e:
             logger.warning(f"Failed to generate daily insight: {e}")
@@ -84,7 +90,7 @@ class ContentProcessor:
         ]
 
         try:
-            summary = self._client._call_openai(history)
+            summary = self._get_client()._call_openai(history)
             return summary.strip() if summary else ""
         except Exception as e:
             logger.warning(f"Failed to summarize paper: {e}")
