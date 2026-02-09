@@ -25,7 +25,9 @@ class OpenAI(LLM):
         self._base_url = None
         self._model = "gpt-5-mini"
 
-        logger.info(f"LLM_PROVIDER raw: '{provider_raw}', processed: '{self._provider}'")
+        logger.info(
+            f"LLM_PROVIDER raw: '{provider_raw}', processed: '{self._provider}'"
+        )
 
         if self._provider == "deepseek":
             deepseek_key = os.environ.get("DEEPSEEK_API_KEY")
