@@ -28,12 +28,16 @@ from arxiv_sanity_bot.models.openai import OpenAI  # noqa: E402
 from arxiv_sanity_bot.store.store import DocumentStore  # noqa: E402
 from arxiv_sanity_bot.twitter.auth import TwitterOAuth1  # noqa: E402
 from arxiv_sanity_bot.twitter.send_tweet import send_tweet  # noqa: E402
-from arxiv_sanity_bot.sources import (
+from arxiv_sanity_bot.sources import (  # noqa: E402
     GitHubTrendingClient,
     HuggingFaceExtendedClient,
     TechBlogClient,
-)  # noqa: E402
-from arxiv_sanity_bot.email import SendGridEmailSender, SmtpEmailSender  # noqa: E402
+)
+from arxiv_sanity_bot.email import (  # noqa: E402
+    EmailSender,
+    SendGridEmailSender,
+    SmtpEmailSender,
+)
 from arxiv_sanity_bot.models.content_processor import ContentProcessor  # noqa: E402
 
 
@@ -357,6 +361,7 @@ def daily_digest(
     smtp_user = os.environ.get("SMTP_USER")
     smtp_pass = os.environ.get("SMTP_PASS")
 
+    sender: EmailSender
     if smtp_host and smtp_user and smtp_pass:
         # Use SMTP (QQ Mail, Gmail, etc.)
         logger.info(f"Using SMTP sender: {smtp_host}")
@@ -457,15 +462,17 @@ def _fetch_arxiv_papers(limit: int, dry: bool = True) -> list[dict[str, Any]]:
 
             url = arxiv_abstracts.get_url(row["arxiv"])
 
-            papers.append({
-                "arxiv": row["arxiv"],
-                "title": row["title"],
-                "abstract": row["abstract"],
-                "summary": summary,
-                "url": url,
-                "score": row.get("score", 1),
-                "published_on": row["published_on"],
-            })
+            papers.append(
+                {
+                    "arxiv": row["arxiv"],
+                    "title": row["title"],
+                    "abstract": row["abstract"],
+                    "summary": summary,
+                    "url": url,
+                    "score": row.get("score", 1),
+                    "published_on": row["published_on"],
+                }
+            )
 
         logger.info(f"Processed {len(papers)} arXiv papers")
         return papers

@@ -101,10 +101,9 @@ class TechBlogClient:
             try:
                 posts = self._fetch_feed_with_retry(source, feed_url)
                 # Filter by date and limit
-                recent_posts = [
-                    p for p in posts
-                    if p.published_on >= cutoff_date
-                ][:limit_per_source]
+                recent_posts = [p for p in posts if p.published_on >= cutoff_date][
+                    :limit_per_source
+                ]
                 all_posts.extend(recent_posts)
             except Exception as e:
                 logger.error(
@@ -207,10 +206,12 @@ class TechBlogClient:
         if "published_parsed" in entry and entry.published_parsed:
             # feedparser returns time.struct_time, convert to timestamp
             import time
+
             ts = time.mktime(entry.published_parsed)
             published_on = datetime.fromtimestamp(ts, tz=TIMEZONE)
         elif "updated_parsed" in entry and entry.updated_parsed:
             import time
+
             ts = time.mktime(entry.updated_parsed)
             published_on = datetime.fromtimestamp(ts, tz=TIMEZONE)
         elif "published" in entry:
@@ -224,7 +225,9 @@ class TechBlogClient:
         if "author" in entry:
             author = entry.author
         elif "authors" in entry and entry.authors:
-            author = ", ".join(a.get("name", "") for a in entry.authors if a.get("name"))
+            author = ", ".join(
+                a.get("name", "") for a in entry.authors if a.get("name")
+            )
 
         return BlogPost(
             title=title,

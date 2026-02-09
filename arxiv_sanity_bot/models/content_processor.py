@@ -34,7 +34,7 @@ class ContentProcessor:
             context_parts.append(f"GitHub热门: {', '.join(repo_names)}")
 
         if hf_models:
-            model_names = [m.name.split('/')[-1] for m in hf_models[:2]]
+            model_names = [m.name.split("/")[-1] for m in hf_models[:2]]
             context_parts.append(f"HF模型: {', '.join(model_names)}")
 
         if blog_posts:
@@ -49,12 +49,12 @@ class ContentProcessor:
         history = [
             {
                 "role": "system",
-                "content": "你是一位资深AI资讯编辑。请用2-3句话总结今日AI领域的主要趋势和亮点，语气自然、专业，像晨报导语。可以适当展开，控制在150字以内。"
+                "content": "你是一位资深AI资讯编辑。请用2-3句话总结今日AI领域的主要趋势和亮点，语气自然、专业，像晨报导语。可以适当展开，控制在150字以内。",
             },
             {
                 "role": "user",
-                "content": f"基于以下信息生成今日洞察（丰富但不冗长）：\n{context}"
-            }
+                "content": f"基于以下信息生成今日洞察（丰富但不冗长）：\n{context}",
+            },
         ]
 
         try:
@@ -75,12 +75,12 @@ class ContentProcessor:
         history = [
             {
                 "role": "system",
-                "content": "你是学术论文助手。用2-3句话概括论文核心贡献，面向技术读者，突出创新点。控制在100字以内，语言自然。"
+                "content": "你是学术论文助手。用2-3句话概括论文核心贡献，面向技术读者，突出创新点。控制在100字以内，语言自然。",
             },
             {
                 "role": "user",
-                "content": f"标题: {title}\n\n摘要: {truncated}\n\n请生成简洁中文摘要:"
-            }
+                "content": f"标题: {title}\n\n摘要: {truncated}\n\n请生成简洁中文摘要:",
+            },
         ]
 
         try:
@@ -90,7 +90,9 @@ class ContentProcessor:
             logger.warning(f"Failed to summarize paper: {e}")
             return ""
 
-    def batch_summarize_papers(self, papers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def batch_summarize_papers(
+        self, papers: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """
         Summarize multiple papers with rate limiting to control costs.
         Only summarize top papers to save tokens.
@@ -102,8 +104,7 @@ class ContentProcessor:
             logger.info(f"Summarizing paper {i+1}/{min(len(papers), max_papers)}")
 
             summary = self.summarize_paper(
-                paper.get("title", ""),
-                paper.get("abstract", "")
+                paper.get("title", ""), paper.get("abstract", "")
             )
 
             paper_copy = paper.copy()

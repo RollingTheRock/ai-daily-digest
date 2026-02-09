@@ -36,10 +36,10 @@ class SmtpEmailSender(EmailSender):
             password: SMTP password/auth code (or from SMTP_PASS env var)
             use_tls: Use TLS encryption (default True)
         """
-        self.host = host or os.environ.get("SMTP_HOST", "smtp.qq.com")
-        self.port = port or int(os.environ.get("SMTP_PORT", "465"))
-        self.user = user or os.environ.get("SMTP_USER")
-        self.password = password or os.environ.get("SMTP_PASS")
+        self.host: str = host or os.environ.get("SMTP_HOST") or "smtp.qq.com"
+        self.port: int = port or int(os.environ.get("SMTP_PORT") or "465")
+        self.user: str | None = user or os.environ.get("SMTP_USER")
+        self.password: str | None = password or os.environ.get("SMTP_PASS")
         self.use_tls = use_tls
 
         if not self.user or not self.password:
@@ -82,9 +82,15 @@ class SmtpEmailSender(EmailSender):
         if not subject:
             today = datetime.now(tz=TIMEZONE).strftime("%m月%d日")
             weekday = datetime.now(tz=TIMEZONE).strftime("%A")
-            weekday_cn = {"Monday": "周一", "Tuesday": "周二", "Wednesday": "周三",
-                         "Thursday": "周四", "Friday": "周五", "Saturday": "周六",
-                         "Sunday": "周日"}.get(weekday, weekday)
+            weekday_cn = {
+                "Monday": "周一",
+                "Tuesday": "周二",
+                "Wednesday": "周三",
+                "Thursday": "周四",
+                "Friday": "周五",
+                "Saturday": "周六",
+                "Sunday": "周日",
+            }.get(weekday, weekday)
             subject = f"AI 晨报 · {today} {weekday_cn}"
 
         html_content = self._build_html_email(
@@ -104,12 +110,15 @@ class SmtpEmailSender(EmailSender):
             msg["To"] = to_email
             msg.attach(MIMEText(html_content, "html", "utf-8"))
 
+            server: smtplib.SMTP_SSL | smtplib.SMTP
             if self.port == 465:
                 server = smtplib.SMTP_SSL(self.host, self.port, timeout=30)
             else:
                 server = smtplib.SMTP(self.host, self.port, timeout=30)
                 server.starttls()
 
+            assert self.user is not None
+            assert self.password is not None
             with server:
                 server.login(self.user, self.password)
                 server.sendmail(from_email, to_email, msg.as_string())
@@ -141,9 +150,15 @@ class SmtpEmailSender(EmailSender):
         """Build HTML email content with Notion-inspired design."""
         today = datetime.now(tz=TIMEZONE).strftime("%m月%d日")
         weekday = datetime.now(tz=TIMEZONE).strftime("%A")
-        weekday_cn = {"Monday": "周一", "Tuesday": "周二", "Wednesday": "周三",
-                     "Thursday": "周四", "Friday": "周五", "Saturday": "周六",
-                     "Sunday": "周日"}.get(weekday, weekday)
+        weekday_cn = {
+            "Monday": "周一",
+            "Tuesday": "周二",
+            "Wednesday": "周三",
+            "Thursday": "周四",
+            "Friday": "周五",
+            "Saturday": "周六",
+            "Sunday": "周日",
+        }.get(weekday, weekday)
 
         html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -428,7 +443,9 @@ class SmtpEmailSender(EmailSender):
         else:
             for repo in repos:
                 stars = f"{repo.stars_total:,} stars" if repo.stars_total else ""
-                lang = f'<span class="tag">{repo.language}</span>' if repo.language else ""
+                lang = (
+                    f'<span class="tag">{repo.language}</span>' if repo.language else ""
+                )
 
                 html += f"""
             <div class="card">
@@ -528,7 +545,11 @@ class SmtpEmailSender(EmailSender):
             summary = paper.get("summary", "")
             url = paper.get("url", f"https://arxiv.org/abs/{arxiv_id}")
 
-            summary_html = f'<div class="card-summary">{self._escape_html(summary)}</div>' if summary else ""
+            summary_html = (
+                f'<div class="card-summary">{self._escape_html(summary)}</div>'
+                if summary
+                else ""
+            )
 
             html += f"""
             <div class="card">

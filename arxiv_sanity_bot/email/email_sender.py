@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Content, MimeType
+from sendgrid.helpers.mail import Mail
 
 from arxiv_sanity_bot.logger import get_logger
 from arxiv_sanity_bot.config import TIMEZONE
@@ -28,6 +28,7 @@ class EmailSender:
         to_email: str,
         from_email: str,
         subject: str | None = None,
+        daily_insight: str = "",
     ) -> bool:
         """
         Send a daily digest email.
@@ -42,6 +43,7 @@ class EmailSender:
             to_email: Recipient email address
             from_email: Sender email address
             subject: Email subject (optional)
+            daily_insight: Daily insight summary from LLM (optional)
 
         Returns:
             True if sent successfully, False otherwise
@@ -78,6 +80,7 @@ class SendGridEmailSender(EmailSender):
         to_email: str,
         from_email: str,
         subject: str | None = None,
+        daily_insight: str = "",
     ) -> bool:
         """
         Send a daily digest email via SendGrid.
@@ -92,6 +95,7 @@ class SendGridEmailSender(EmailSender):
             to_email: Recipient email address
             from_email: Sender email address
             subject: Email subject (optional)
+            daily_insight: Daily insight summary from LLM (unused in SendGrid)
 
         Returns:
             True if sent successfully, False otherwise
@@ -344,11 +348,15 @@ class SendGridEmailSender(EmailSender):
 """
 
         if not repos:
-            html += '<div class="empty-state">No trending repositories found today.</div>'
+            html += (
+                '<div class="empty-state">No trending repositories found today.</div>'
+            )
         else:
             for repo in repos:
                 stars_today = f"+{repo.stars_today} today" if repo.stars_today else ""
-                language = f'<span class="tag">{repo.language}</span>' if repo.language else ""
+                language = (
+                    f'<span class="tag">{repo.language}</span>' if repo.language else ""
+                )
 
                 html += f"""
                 <div class="card">

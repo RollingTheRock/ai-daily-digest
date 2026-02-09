@@ -33,7 +33,9 @@ class OpenAI(LLM):
                 logger.info("DEEPSEEK_API_KEY not set, using OPENAI_API_KEY")
             else:
                 logger.error("Neither DEEPSEEK_API_KEY nor OPENAI_API_KEY is set!")
-                raise FatalError("API key required. Set DEEPSEEK_API_KEY or OPENAI_API_KEY environment variable.")
+                raise FatalError(
+                    "API key required. Set DEEPSEEK_API_KEY or OPENAI_API_KEY environment variable."
+                )
             self._base_url = os.environ.get(
                 "DEEPSEEK_API_BASE", "https://api.deepseek.com"
             )

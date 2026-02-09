@@ -1,6 +1,5 @@
 """GitHub Trending scraper for AI Daily Digest."""
 
-from datetime import datetime
 from typing import Any
 
 import requests
@@ -179,12 +178,19 @@ class GitHubTrendingClient:
         stars_today = 0
 
         # Find all link elements that might contain star counts
-        link_elems = article.find_all("a", class_="Link Link--muted d-inline-block mr-3")
+        link_elems = article.find_all(
+            "a", class_="Link Link--muted d-inline-block mr-3"
+        )
         for elem in link_elems:
             text = elem.get_text(strip=True)
-            if "star" in text.lower() or text.replace(",", "").replace(".", "").isdigit():
+            if (
+                "star" in text.lower()
+                or text.replace(",", "").replace(".", "").isdigit()
+            ):
                 # This is likely the star count
-                stars_text = text.replace(",", "").replace("k", "000").replace("K", "000")
+                stars_text = (
+                    text.replace(",", "").replace("k", "000").replace("K", "000")
+                )
                 try:
                     # Handle '1.2k' format
                     if "." in stars_text and "000" in stars_text:
