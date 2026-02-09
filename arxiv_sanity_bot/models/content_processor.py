@@ -44,16 +44,16 @@ class ContentProcessor:
         if not context_parts:
             return "今日 AI 领域稳步发展，各平台均有新动态。"
 
-        context = " | ".join(context_parts)
+        context = "\n".join(context_parts)
 
         history = [
             {
                 "role": "system",
-                "content": "你是一位AI资讯编辑。用1-2句话总结今日AI领域的主要趋势，语气自然、专业，像晨报导语。控制在80字以内。"
+                "content": "你是一位资深AI资讯编辑。请用2-3句话总结今日AI领域的主要趋势和亮点，语气自然、专业，像晨报导语。可以适当展开，控制在150字以内。"
             },
             {
                 "role": "user",
-                "content": f"基于以下信息生成今日洞察（简洁自然）：\n{context}"
+                "content": f"基于以下信息生成今日洞察（丰富但不冗长）：\n{context}"
             }
         ]
 

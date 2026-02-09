@@ -25,16 +25,30 @@ class OpenAI(LLM):
         self._model = "gpt-5-mini"
 
         if self._provider == "deepseek":
-            self._api_key = os.environ.get("DEEPSEEK_API_KEY") or self._api_key
+            deepseek_key = os.environ.get("DEEPSEEK_API_KEY")
+            if deepseek_key:
+                self._api_key = deepseek_key
+                logger.info("Using DEEPSEEK_API_KEY from environment")
+            elif self._api_key:
+                logger.info("DEEPSEEK_API_KEY not set, using OPENAI_API_KEY")
+            else:
+                logger.error("Neither DEEPSEEK_API_KEY nor OPENAI_API_KEY is set!")
+                raise FatalError("API key required. Set DEEPSEEK_API_KEY or OPENAI_API_KEY environment variable.")
             self._base_url = os.environ.get(
                 "DEEPSEEK_API_BASE", "https://api.deepseek.com"
             )
             self._model = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
             logger.info(f"Using DeepSeek API with model: {self._model}")
         else:
+            if not self._api_key:
+                logger.error("OPENAI_API_KEY not set!")
+                raise FatalError("OPENAI_API_KEY environment variable required.")
             logger.info(f"Using OpenAI API with model: {self._model}")
 
         # Initialize client with appropriate base_url if specified
+        if not self._api_key:
+            raise FatalError("API key is empty!")
+
         if self._base_url:
             self._client = openai.OpenAI(
                 api_key=self._api_key,
