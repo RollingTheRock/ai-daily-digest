@@ -31,6 +31,10 @@ dependencies = [
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+include = ["arxiv_sanity_bot*"]
+exclude = ["web*", "tests*", ".venv*"]
+
 [dependency-groups]
 dev = [
     "mypy>=1.18.2",
