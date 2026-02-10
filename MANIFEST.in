@@ -1,0 +1,8 @@
+exclude web/*
+recursive-exclude web *
+exclude .github/*
+recursive-exclude .github *
+exclude tests/*
+recursive-exclude tests *
+exclude .venv/*
+recursive-exclude .venv *
