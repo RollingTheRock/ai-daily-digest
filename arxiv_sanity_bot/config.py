@@ -73,3 +73,6 @@ TIMEZONE = ZoneInfo("UTC")
 
 # Store
 FIREBASE_COLLECTION = "arxiv-papers"
+
+# Web integration for favorites/notes
+DIGEST_WEB_URL = "https://yourusername.github.io/ai-digest"  # Set via env var DIGEST_WEB_URL

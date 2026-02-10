@@ -6,11 +6,13 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Any
+from urllib.parse import quote
 
 from arxiv_sanity_bot.logger import get_logger
 from arxiv_sanity_bot.config import TIMEZONE
 from arxiv_sanity_bot.sources import GitHubRepo, HFModel, BlogPost
 from arxiv_sanity_bot.email.email_sender import EmailSender
+from arxiv_sanity_bot.signature import generate_signature
 
 logger = get_logger(__name__)
 
@@ -341,6 +343,45 @@ class SmtpEmailSender(EmailSender):
             font-weight: 500;
         }}
 
+        .card-actions {{
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            gap: 8px;
+        }}
+
+        .btn {{
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }}
+
+        .btn-star {{
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }}
+
+        .btn-star:hover {{
+            background: #fde68a;
+        }}
+
+        .btn-note {{
+            background: #e0e7ff;
+            color: #3730a3;
+            border: 1px solid #c7d2fe;
+        }}
+
+        .btn-note:hover {{
+            background: #c7d2fe;
+        }}
+
         .divider {{
             height: 1px;
             background: #e9e9e7;
@@ -428,8 +469,38 @@ class SmtpEmailSender(EmailSender):
 
         return html
 
+    def _build_action_buttons(
+        self,
+        content_id: str,
+        title: str,
+        url: str,
+        content_type: str,
+        date: str,
+    ) -> str:
+        """Build action buttons (star/note) for a content card."""
+        base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
+        if not base_url:
+            return ""  # No web URL configured, skip buttons
+
+        try:
+            signature = generate_signature(content_id, date)
+
+            star_url = f"{base_url}/star?id={quote(content_id, safe='')}&title={quote(title, safe='')}&url={quote(url, safe='')}&type={content_type}&date={date}&t={signature}"
+            note_url = f"{base_url}/note?id={quote(content_id, safe='')}&title={quote(title, safe='')}&url={quote(url, safe='')}&type={content_type}&date={date}&t={signature}"
+
+            return f"""
+                <div class="card-actions">
+                    <a href="{star_url}" class="btn btn-star" target="_blank">&#9733; 收藏</a>
+                    <a href="{note_url}" class="btn btn-note" target="_blank">&#9998; 笔记</a>
+                </div>
+"""
+        except Exception as e:
+            logger.warning(f"Failed to generate action buttons: {e}")
+            return ""
+
     def _build_github_section(self, repos: list[GitHubRepo]) -> str:
         """Build GitHub trending section."""
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
         html = """
         <div class="section">
             <div class="section-header">
@@ -446,6 +517,14 @@ class SmtpEmailSender(EmailSender):
                 lang = (
                     f'<span class="tag">{repo.language}</span>' if repo.language else ""
                 )
+                content_id = f"github-{repo.name.replace('/', '-')}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=repo.name,
+                    url=repo.url,
+                    content_type="github",
+                    date=today,
+                )
 
                 html += f"""
             <div class="card">
@@ -455,6 +534,7 @@ class SmtpEmailSender(EmailSender):
                     {f'<span>{stars}</span>' if stars else ""}
                     {lang}
                 </div>
+                {action_buttons}
             </div>
 """
 
@@ -469,6 +549,7 @@ class SmtpEmailSender(EmailSender):
         if not has_content:
             return ""
 
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
         html = """
         <div class="section">
             <div class="section-header">
@@ -482,6 +563,14 @@ class SmtpEmailSender(EmailSender):
             html += '<div style="margin-bottom: 12px;"><span class="tag" style="margin-bottom: 8px; display: inline-block;">模型</span></div>'
             for model in models:
                 tags = "".join(f'<span class="tag">{t}</span>' for t in model.tags[:2])
+                content_id = f"hf-model-{model.name.replace('/', '-')}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=model.name,
+                    url=model.url,
+                    content_type="huggingface",
+                    date=today,
+                )
                 html += f"""
             <div class="card">
                 <div class="card-title"><a href="{model.url}">{model.name}</a></div>
@@ -491,6 +580,7 @@ class SmtpEmailSender(EmailSender):
                     <span>喜欢: {model.likes:,}</span>
                     {tags}
                 </div>
+                {action_buttons}
             </div>
 """
 
@@ -498,6 +588,14 @@ class SmtpEmailSender(EmailSender):
         if datasets:
             html += '<div style="margin: 16px 0 12px;"><span class="tag" style="margin-bottom: 8px; display: inline-block;">数据集</span></div>'
             for dataset in datasets:
+                content_id = f"hf-dataset-{dataset.name.replace('/', '-')}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=dataset.name,
+                    url=dataset.url,
+                    content_type="huggingface",
+                    date=today,
+                )
                 html += f"""
             <div class="card">
                 <div class="card-title"><a href="{dataset.url}">{dataset.name}</a></div>
@@ -506,6 +604,7 @@ class SmtpEmailSender(EmailSender):
                     <span>下载: {dataset.downloads:,}</span>
                     <span>喜欢: {dataset.likes:,}</span>
                 </div>
+                {action_buttons}
             </div>
 """
 
@@ -513,6 +612,14 @@ class SmtpEmailSender(EmailSender):
         if spaces:
             html += '<div style="margin: 16px 0 12px;"><span class="tag" style="margin-bottom: 8px; display: inline-block;">Spaces</span></div>'
             for space in spaces:
+                content_id = f"hf-space-{space.name.replace('/', '-')}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=space.name,
+                    url=space.url,
+                    content_type="huggingface",
+                    date=today,
+                )
                 html += f"""
             <div class="card">
                 <div class="card-title"><a href="{space.url}">{space.name}</a></div>
@@ -520,6 +627,7 @@ class SmtpEmailSender(EmailSender):
                 <div class="card-meta">
                     <span>喜欢: {space.likes:,}</span>
                 </div>
+                {action_buttons}
             </div>
 """
 
@@ -531,6 +639,7 @@ class SmtpEmailSender(EmailSender):
         if not papers:
             return ""
 
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
         html = """
         <div class="section">
             <div class="section-header">
@@ -544,11 +653,21 @@ class SmtpEmailSender(EmailSender):
             arxiv_id = paper.get("arxiv", "")
             summary = paper.get("summary", "")
             url = paper.get("url", f"https://arxiv.org/abs/{arxiv_id}")
+            paper_date = paper.get("date", today)
 
             summary_html = (
                 f'<div class="card-summary">{self._escape_html(summary)}</div>'
                 if summary
                 else ""
+            )
+
+            content_id = f"arxiv-{arxiv_id}"
+            action_buttons = self._build_action_buttons(
+                content_id=content_id,
+                title=title,
+                url=url,
+                content_type="arxiv",
+                date=paper_date,
             )
 
             html += f"""
@@ -558,6 +677,7 @@ class SmtpEmailSender(EmailSender):
                 <div class="card-meta">
                     <span>arXiv:{arxiv_id}</span>
                 </div>
+                {action_buttons}
             </div>
 """
 
@@ -569,6 +689,7 @@ class SmtpEmailSender(EmailSender):
         if not posts:
             return ""
 
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
         html = """
         <div class="section">
             <div class="section-header">
@@ -579,6 +700,15 @@ class SmtpEmailSender(EmailSender):
 
         for post in posts:
             date_str = post.published_on.strftime("%m月%d日")
+            post_date = post.published_on.strftime("%Y-%m-%d")
+            content_id = f"blog-{post.source.lower().replace(' ', '-')}-{post.title[:30].lower().replace(' ', '-')}"
+            action_buttons = self._build_action_buttons(
+                content_id=content_id,
+                title=post.title,
+                url=post.url,
+                content_type="blog",
+                date=post_date,
+            )
 
             html += f"""
             <div class="card">
@@ -588,6 +718,7 @@ class SmtpEmailSender(EmailSender):
                     <span class="tag">{post.source}</span>
                     <span>{date_str}</span>
                 </div>
+                {action_buttons}
             </div>
 """
 

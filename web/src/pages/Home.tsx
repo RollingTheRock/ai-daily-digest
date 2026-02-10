@@ -1,0 +1,221 @@
+import { useState, useEffect } from "react";
+import { useAuth } from "../hooks/useAuth";
+import { api, type StarItem } from "../utils/api";
+
+export default function Home() {
+  const { user, loading: authLoading, login, logout } = useAuth();
+  const [stars, setStars] = useState<StarItem[]>([]);
+  const [stats, setStats] = useState({ total_stars: 0, total_notes: 0, pending_ai: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState("all");
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    } else if (!authLoading) {
+      setLoading(false);
+    }
+  }, [user, authLoading]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await api.stars.list();
+      setStars(data.stars);
+      setStats(data.stats);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnstar = async (id: string) => {
+    try {
+      await api.stars.remove(id);
+      setStars((prev) => prev.filter((s) => s.id !== id));
+      setStats((prev) => ({ ...prev, total_stars: prev.total_stars - 1 }));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to remove star");
+    }
+  };
+
+  const filteredStars = stars.filter((star) => {
+    if (filter === "all") return true;
+    if (filter === "github") return star.type === "github";
+    if (filter === "arxiv") return star.type === "arxiv";
+    if (filter === "huggingface") return star.type === "huggingface";
+    if (filter === "blog") return star.type === "blog";
+    if (filter === "with_notes") return star.note_id;
+    return true;
+  });
+
+  // Group by date
+  const groupedStars = filteredStars.reduce((acc, star) => {
+    const date = star.date;
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(star);
+    return acc;
+  }, {} as Record<string, StarItem[]>);
+
+  const sortedDates = Object.keys(groupedStars).sort().reverse();
+
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-notion-muted">加载中...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="text-4xl mb-4">🔖</div>
+        <h1 className="text-2xl font-semibold mb-2">AI Digest 收藏夹</h1>
+        <p className="text-notion-muted mb-8 text-center max-w-md">
+          收藏和整理你的AI日报内容，随时记录想法和笔记
+        </p>
+        <button onClick={() => login()} className="btn-primary">
+          使用 GitHub 登录
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🔖</span>
+          <h1 className="text-xl font-semibold">AI Digest 收藏夹</h1>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-notion-muted hidden sm:inline">
+            {user.login}
+          </span>
+          <button onClick={logout} className="text-sm text-notion-muted hover:text-notion-text">
+            退出
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="bg-white rounded-lg border border-notion-border p-4 mb-6">
+        <div className="flex gap-6 text-sm">
+          <div>
+            <span className="text-2xl font-semibold">{stats.total_stars}</span>
+            <span className="text-notion-muted ml-1">收藏</span>
+          </div>
+          <div>
+            <span className="text-2xl font-semibold">{stats.total_notes}</span>
+            <span className="text-notion-muted ml-1">笔记</span>
+          </div>
+          {stats.pending_ai > 0 && (
+            <div>
+              <span className="text-2xl font-semibold text-amber-600">{stats.pending_ai}</span>
+              <span className="text-notion-muted ml-1">待AI增强</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Filter */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+        {[
+          { key: "all", label: "全部" },
+          { key: "github", label: "GitHub" },
+          { key: "arxiv", label: "论文" },
+          { key: "huggingface", label: "HF" },
+          { key: "blog", label: "博客" },
+          { key: "with_notes", label: "有笔记" },
+        ].map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`px-3 py-1 rounded-full text-sm whitespace-nowrap ${
+              filter === f.key
+                ? "bg-notion-text text-white"
+                : "bg-white border border-notion-border text-notion-muted hover:text-notion-text"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4">
+          {error}
+        </div>
+      )}
+
+      {/* Content */}
+      {sortedDates.length === 0 ? (
+        <div className="text-center py-12 text-notion-muted">
+          暂无收藏内容
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {sortedDates.map((date) => (
+            <div key={date}>
+              <div className="text-sm text-notion-muted mb-3">
+                📅 {date}
+              </div>
+              <div className="space-y-3">
+                {groupedStars[date].map((star) => (
+                  <div key={star.id} className="card">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <a
+                          href={star.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-notion-text hover:underline truncate block"
+                        >
+                          {star.title}
+                        </a>
+                        <div className="flex items-center gap-2 mt-2 text-xs text-notion-muted">
+                          <span className="tag">{star.type}</span>
+                          {star.note_id && (
+                            <span className="text-amber-600">📝 有笔记</span>
+                          )}
+                          {star.tags.map((tag) => (
+                            <span key={tag} className="tag">{tag}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {star.note_id ? (
+                          <span className="text-amber-500">📝</span>
+                        ) : (
+                          <a
+                            href={`/ai-digest/note?id=${encodeURIComponent(star.id)}&title=${encodeURIComponent(star.title)}&url=${encodeURIComponent(star.url)}&type=${star.type}&date=${star.date}&t=${new URLSearchParams(window.location.search).get('t') || ''}`}
+                            className="text-notion-muted hover:text-notion-text"
+                            title="添加笔记"
+                          >
+                            ✏️
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleUnstar(star.id)}
+                          className="text-notion-muted hover:text-red-500"
+                          title="取消收藏"
+                        >
+                          ⭐
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

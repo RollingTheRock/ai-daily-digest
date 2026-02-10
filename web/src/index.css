@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-notion-bg text-notion-text antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-150;
+  }
+
+  .btn-primary {
+    @apply btn bg-notion-text text-white hover:bg-gray-700;
+  }
+
+  .btn-secondary {
+    @apply btn bg-gray-100 text-notion-text hover:bg-gray-200;
+  }
+
+  .btn-accent {
+    @apply btn bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300;
+  }
+
+  .card {
+    @apply bg-notion-card rounded-lg border border-notion-border p-5 shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 rounded-lg border border-notion-border bg-white
+           focus:outline-none focus:ring-2 focus:ring-notion-text/20 focus:border-notion-text
+           placeholder:text-notion-light;
+  }
+
+  .textarea {
+    @apply input min-h-[120px] resize-y;
+  }
+}
