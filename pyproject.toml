@@ -31,9 +31,8 @@ dependencies = [
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-include = ["arxiv_sanity_bot*"]
-exclude = ["web*", "tests*", ".venv*"]
+[tool.setuptools]
+packages = ["arxiv_sanity_bot"]
 
 [dependency-groups]
 dev = [
