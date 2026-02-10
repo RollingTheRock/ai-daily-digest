@@ -64,6 +64,9 @@ jobs:
         SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
         # Firebase (for arXiv paper tracking)
         FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+        # Web integration for favorites/notes
+        DIGEST_WEB_URL: ${{ secrets.DIGEST_WEB_URL }}
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
       run: |
         echo "Running AI Daily Digest..."
         echo "LLM Provider: $LLM_PROVIDER"
