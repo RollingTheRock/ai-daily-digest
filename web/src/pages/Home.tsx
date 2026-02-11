@@ -14,6 +14,16 @@ export default function Home() {
 
   useEffect(() => {
     checkAuthAndLoadData();
+
+    // 页面重新获得焦点时刷新数据（从其他页面返回时）
+    const handleFocus = () => {
+      if (isLoggedIn()) {
+        loadData();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   const checkAuthAndLoadData = async () => {
@@ -126,7 +136,8 @@ export default function Home() {
 
       {/* Stats */}
       <div className="bg-white rounded-lg border border-notion-border p-4 mb-6">
-        <div className="flex gap-6 text-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex gap-6 text-sm">
           <div>
             <span className="text-2xl font-semibold">{stats.total_stars}</span>
             <span className="text-notion-muted ml-1">收藏</span>
@@ -141,6 +152,15 @@ export default function Home() {
               <span className="text-notion-muted ml-1">待AI增强</span>
             </div>
           )}
+          </div>
+          <button
+            onClick={loadData}
+            disabled={loading}
+            className="text-sm text-notion-muted hover:text-notion-text px-2 py-1 rounded"
+            title="刷新"
+          >
+            {loading ? "⟳" : "🔄"}
+          </button>
         </div>
       </div>
 
