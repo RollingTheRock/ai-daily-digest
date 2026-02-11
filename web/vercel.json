@@ -2,5 +2,10 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "framework": "vite",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/(.+)", "dest": "/index.html" },
+    { "src": "/", "dest": "/index.html" }
+  ]
 }
