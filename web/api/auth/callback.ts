@@ -13,6 +13,8 @@ const REDIRECT_URI = process.env.REDIRECT_URI
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // eslint-disable-next-line no-console
+  console.log("[OAuth Callback] handler called, path:", req.url);
+  // eslint-disable-next-line no-console
   console.log("[OAuth Callback] redirect_uri:", REDIRECT_URI);
 
   if (req.method !== "GET") {
