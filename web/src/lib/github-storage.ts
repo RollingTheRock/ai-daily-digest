@@ -69,8 +69,14 @@ export async function ensureDataRepo(): Promise<void> {
     });
 
     if (!createResponse.ok) {
-      const error = await createResponse.text();
-      throw new Error(`Failed to create repo: ${error}`);
+      const errorText = await createResponse.text();
+      // 422 表示仓库已存在（可能是并发创建或其他原因）
+      if (createResponse.status === 422 && errorText.includes("already exists")) {
+        // 仓库已存在，继续初始化
+        console.log("Repository already exists, skipping creation");
+      } else {
+        throw new Error(`Failed to create repo: ${errorText}`);
+      }
     }
 
     // 等待仓库初始化
@@ -78,7 +84,17 @@ export async function ensureDataRepo(): Promise<void> {
 
     // 初始化数据文件
     await initDataFiles();
+  } else if (!response.ok) {
+    // 其他错误（401, 403等）
+    throw new Error(`Failed to check repo: ${response.status} ${response.statusText}`);
   }
+
+  // 仓库已存在，确保数据文件也存在
+  // 等待一下确保仓库完全可用
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  await initDataFiles().catch(() => {
+    // 忽略初始化错误（文件可能已存在）
+  });
 }
 
 /**
