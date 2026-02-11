@@ -107,7 +107,8 @@ jobs:
                     description="A test model for email template",
                     likes=123,
                     downloads=45678,
-                    tags=["pytorch", "transformers"]
+                    tags=["pytorch", "transformers"],
+                    type="model"
                 )
             ]
 
