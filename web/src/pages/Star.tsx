@@ -220,7 +220,7 @@ export default function Star() {
 
           <div className="mt-4 text-center">
             <a
-              href={`/ai-digest/note?id=${encodeURIComponent(id)}&title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&type=${type}&date=${date}&t=${signature}`}
+              href={`/note?id=${encodeURIComponent(id)}&title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&type=${type}&date=${date}&t=${signature}`}
               className="text-sm text-notion-muted hover:text-notion-text"
             >
               📝 收藏并记笔记 →

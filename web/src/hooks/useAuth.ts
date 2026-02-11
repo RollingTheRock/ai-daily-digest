@@ -43,7 +43,7 @@ export function useAuth() {
     try {
       await api.auth.logout();
       setUser(null);
-      window.location.href = "/ai-digest/";
+      window.location.href = "/";
     } catch (err) {
       console.error("Logout failed:", err);
     }

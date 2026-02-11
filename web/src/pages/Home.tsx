@@ -193,7 +193,7 @@ export default function Home() {
                           <span className="text-amber-500">📝</span>
                         ) : (
                           <a
-                            href={`/ai-digest/note?id=${encodeURIComponent(star.id)}&title=${encodeURIComponent(star.title)}&url=${encodeURIComponent(star.url)}&type=${star.type}&date=${star.date}&t=${new URLSearchParams(window.location.search).get('t') || ''}`}
+                            href={`/note?id=${encodeURIComponent(star.id)}&title=${encodeURIComponent(star.title)}&url=${encodeURIComponent(star.url)}&type=${star.type}&date=${star.date}&t=${new URLSearchParams(window.location.search).get('t') || ''}`}
                             className="text-notion-muted hover:text-notion-text"
                             title="添加笔记"
                           >
