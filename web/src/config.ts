@@ -1,5 +1,5 @@
 export const config = {
-  // GitHub OAuth App Client ID（公开，用户需替换）
+  // GitHub OAuth App Client ID（RollingTheRock）
   githubClientId: "Ov23liULUDlwTinkWN0Y",
 
   // GitHub Pages 部署路径
