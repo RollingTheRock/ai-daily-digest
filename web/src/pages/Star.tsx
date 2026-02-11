@@ -1,34 +1,47 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
-import { api } from "../utils/api";
+import { isLoggedIn, getCurrentUser, type GitHubUser } from "../lib/github-auth";
+import { addStar, type StarItem } from "../lib/github-storage";
 
 export default function Star() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, loading: authLoading, login } = useAuth();
 
   const id = searchParams.get("id") || "";
   const title = searchParams.get("title") || "";
   const url = searchParams.get("url") || "";
   const type = searchParams.get("type") || "";
   const date = searchParams.get("date") || "";
-  const signature = searchParams.get("t") || "";
 
+  const [user, setUser] = useState<GitHubUser | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      // Save current path for redirect after login
-      login(window.location.pathname + window.location.search);
-    }
-  }, [authLoading, user, login]);
+    checkAuth();
+  }, []);
 
-  if (authLoading) {
+  const checkAuth = async () => {
+    if (!isLoggedIn()) {
+      setCheckingAuth(false);
+      return;
+    }
+
+    try {
+      const userData = await getCurrentUser();
+      setUser(userData);
+    } catch {
+      // 认证失败，会在渲染时处理
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
+  if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-notion-muted">加载中...</div>
@@ -38,13 +51,20 @@ export default function Star() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-notion-muted">正在跳转到登录页面...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="text-4xl mb-4">🔖</div>
+        <h1 className="text-xl font-semibold mb-2">需要登录</h1>
+        <p className="text-notion-muted mb-6 text-center max-w-md">
+          请先登录后再收藏内容
+        </p>
+        <button onClick={() => navigate("/login")} className="btn-primary">
+          去登录
+        </button>
       </div>
     );
   }
 
-  if (!id || !title || !url || !signature) {
+  if (!id || !title || !url) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
@@ -74,15 +94,16 @@ export default function Star() {
       setLoading(true);
       setError(null);
 
-      await api.stars.add({
+      const starData: Omit<StarItem, "starred_at"> = {
         id,
         title,
         url,
         type,
         date,
-        t: signature,
         tags,
-      });
+      };
+
+      await addStar(starData);
 
       setSuccess(true);
       setTimeout(() => {
@@ -220,7 +241,7 @@ export default function Star() {
 
           <div className="mt-4 text-center">
             <a
-              href={`/note?id=${encodeURIComponent(id)}&title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&type=${type}&date=${date}&t=${signature}`}
+              href={`/ai-daily-digest/note?id=${encodeURIComponent(id)}&title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&type=${type}&date=${date}`}
               className="text-sm text-notion-muted hover:text-notion-text"
             >
               📝 收藏并记笔记 →

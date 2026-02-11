@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Daily Digest</title>
+  <script>
+    // GitHub Pages SPA 路由支持
+    // 捕获 404 错误，将原始路径存储到 sessionStorage，然后重定向到首页
+    const path = window.location.pathname;
+    const search = window.location.search;
+    const hash = window.location.hash;
+    const fullPath = path + search + hash;
+
+    sessionStorage.setItem("redirect_path", fullPath);
+
+    // 重定向到首页（base path）
+    window.location.replace("/ai-daily-digest/");
+  </script>
+</head>
+<body>
+  <p>正在跳转...</p>
+</body>
+</html>

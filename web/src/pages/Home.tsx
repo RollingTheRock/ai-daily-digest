@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "../hooks/useAuth";
-import { api, type StarItem } from "../utils/api";
+import { useNavigate } from "react-router-dom";
+import { isLoggedIn, getCurrentUser, logout, type GitHubUser } from "../lib/github-auth";
+import { getStars, removeStar, getStats, type StarItem } from "../lib/github-storage";
 
 export default function Home() {
-  const { user, loading: authLoading, login, logout } = useAuth();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<GitHubUser | null>(null);
   const [stars, setStars] = useState<StarItem[]>([]);
   const [stats, setStats] = useState({ total_stars: 0, total_notes: 0, pending_ai: 0 });
   const [loading, setLoading] = useState(true);
@@ -11,22 +13,37 @@ export default function Home() {
   const [filter, setFilter] = useState("all");
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    } else if (!authLoading) {
+    checkAuthAndLoadData();
+  }, []);
+
+  const checkAuthAndLoadData = async () => {
+    if (!isLoggedIn()) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const userData = await getCurrentUser();
+      setUser(userData);
+      if (userData) {
+        await loadData();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "认证失败");
       setLoading(false);
     }
-  }, [user, authLoading]);
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await api.stars.list();
-      setStars(data.stars);
-      setStats(data.stats);
+
+      const [starsData, statsData] = await Promise.all([getStars(), getStats()]);
+      setStars(starsData);
+      setStats(statsData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load data");
+      setError(err instanceof Error ? err.message : "加载数据失败");
     } finally {
       setLoading(false);
     }
@@ -34,12 +51,16 @@ export default function Home() {
 
   const handleUnstar = async (id: string) => {
     try {
-      await api.stars.remove(id);
+      await removeStar(id);
       setStars((prev) => prev.filter((s) => s.id !== id));
       setStats((prev) => ({ ...prev, total_stars: prev.total_stars - 1 }));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to remove star");
+      alert(err instanceof Error ? err.message : "取消收藏失败");
     }
+  };
+
+  const handleLogout = () => {
+    logout();
   };
 
   const filteredStars = stars.filter((star) => {
@@ -62,7 +83,7 @@ export default function Home() {
 
   const sortedDates = Object.keys(groupedStars).sort().reverse();
 
-  if (authLoading || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-notion-muted">加载中...</div>
@@ -78,7 +99,7 @@ export default function Home() {
         <p className="text-notion-muted mb-8 text-center max-w-md">
           收藏和整理你的AI日报内容，随时记录想法和笔记
         </p>
-        <button onClick={() => login()} className="btn-primary">
+        <button onClick={() => navigate("/login")} className="btn-primary">
           使用 GitHub 登录
         </button>
       </div>
@@ -97,7 +118,7 @@ export default function Home() {
           <span className="text-sm text-notion-muted hidden sm:inline">
             {user.login}
           </span>
-          <button onClick={logout} className="text-sm text-notion-muted hover:text-notion-text">
+          <button onClick={handleLogout} className="text-sm text-notion-muted hover:text-notion-text">
             退出
           </button>
         </div>
@@ -183,7 +204,7 @@ export default function Home() {
                           {star.note_id && (
                             <span className="text-amber-600">📝 有笔记</span>
                           )}
-                          {star.tags.map((tag) => (
+                          {star.tags?.map((tag) => (
                             <span key={tag} className="tag">{tag}</span>
                           ))}
                         </div>
@@ -193,7 +214,7 @@ export default function Home() {
                           <span className="text-amber-500">📝</span>
                         ) : (
                           <a
-                            href={`/note?id=${encodeURIComponent(star.id)}&title=${encodeURIComponent(star.title)}&url=${encodeURIComponent(star.url)}&type=${star.type}&date=${star.date}&t=${new URLSearchParams(window.location.search).get('t') || ''}`}
+                            href={`/ai-daily-digest/note?id=${encodeURIComponent(star.id)}&title=${encodeURIComponent(star.title)}&url=${encodeURIComponent(star.url)}&type=${star.type}&date=${star.date}`}
                             className="text-notion-muted hover:text-notion-text"
                             title="添加笔记"
                           >

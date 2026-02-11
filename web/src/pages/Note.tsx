@@ -1,20 +1,21 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
-import { api } from "../utils/api";
+import { isLoggedIn, getCurrentUser, type GitHubUser } from "../lib/github-auth";
+import { addNote, addStar, type StarItem } from "../lib/github-storage";
+import { config } from "../config";
 
 export default function Note() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user, loading: authLoading, login } = useAuth();
 
   const id = searchParams.get("id") || "";
   const title = searchParams.get("title") || "";
   const url = searchParams.get("url") || "";
   const type = searchParams.get("type") || "";
   const date = searchParams.get("date") || "";
-  const signature = searchParams.get("t") || "";
 
+  const [user, setUser] = useState<GitHubUser | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [thoughts, setThoughts] = useState("");
   const [questions, setQuestions] = useState("");
   const [todos, setTodos] = useState("");
@@ -24,12 +25,26 @@ export default function Note() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      login(window.location.pathname + window.location.search);
-    }
-  }, [authLoading, user, login]);
+    checkAuth();
+  }, []);
 
-  if (authLoading) {
+  const checkAuth = async () => {
+    if (!isLoggedIn()) {
+      setCheckingAuth(false);
+      return;
+    }
+
+    try {
+      const userData = await getCurrentUser();
+      setUser(userData);
+    } catch {
+      // 认证失败，会在渲染时处理
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
+  if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-notion-muted">加载中...</div>
@@ -39,13 +54,20 @@ export default function Note() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-notion-muted">正在跳转到登录页面...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="text-4xl mb-4">📝</div>
+        <h1 className="text-xl font-semibold mb-2">需要登录</h1>
+        <p className="text-notion-muted mb-6 text-center max-w-md">
+          请先登录后再添加笔记
+        </p>
+        <button onClick={() => navigate("/login")} className="btn-primary">
+          去登录
+        </button>
       </div>
     );
   }
 
-  if (!id || !title || !url || !signature) {
+  if (!id || !title || !url) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
@@ -64,18 +86,28 @@ export default function Note() {
       setLoading(true);
       setError(null);
 
-      await api.notes.save({
-        content_id: id,
-        content_title: title,
-        content_url: url,
-        content_type: type,
+      // 先添加收藏（如果不存在）
+      const starData: Omit<StarItem, "starred_at"> = {
+        id,
+        title,
+        url,
+        type,
         date,
-        t: signature,
+        tags: [],
+      };
+      await addStar(starData);
+
+      // 再添加笔记
+      await addNote(
+        id,
+        title,
+        url,
+        type,
+        date,
         thoughts,
         questions,
-        todos,
-        request_ai: requestAi,
-      });
+        todos
+      );
 
       setSuccess(true);
       setTimeout(() => {
@@ -169,22 +201,24 @@ export default function Note() {
               />
             </div>
 
-            {/* AI Enhancement */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="requestAi"
-                checked={requestAi}
-                onChange={(e) => setRequestAi(e.target.checked)}
-                className="w-4 h-4 rounded border-notion-border"
-              />
-              <label htmlFor="requestAi" className="text-sm cursor-pointer">
-                <span className="font-medium">🤖 AI 增强</span>
-                <span className="text-notion-muted ml-1">
-                  （润色内容、延伸调研、行动建议）
-                </span>
-              </label>
-            </div>
+            {/* AI Enhancement - 仅在功能开启时显示 */}
+            {config.features.aiEnhancement && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="requestAi"
+                  checked={requestAi}
+                  onChange={(e) => setRequestAi(e.target.checked)}
+                  className="w-4 h-4 rounded border-notion-border"
+                />
+                <label htmlFor="requestAi" className="text-sm cursor-pointer">
+                  <span className="font-medium">🤖 AI 增强</span>
+                  <span className="text-notion-muted ml-1">
+                    （润色内容、延伸调研、行动建议）
+                  </span>
+                </label>
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">
