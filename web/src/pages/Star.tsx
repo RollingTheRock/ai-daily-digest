@@ -240,12 +240,12 @@ export default function Star() {
           </form>
 
           <div className="mt-4 text-center">
-            <a
-              href={`/ai-daily-digest/note?id=${encodeURIComponent(id)}&title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&type=${type}&date=${date}`}
+            <button
+              onClick={() => navigate(`/note?id=${encodeURIComponent(id)}&title=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}&type=${type}&date=${date}`)}
               className="text-sm text-notion-muted hover:text-notion-text"
             >
               📝 收藏并记笔记 →
-            </a>
+            </button>
           </div>
         </div>
       </div>

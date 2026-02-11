@@ -213,13 +213,13 @@ export default function Home() {
                         {star.note_id ? (
                           <span className="text-amber-500">📝</span>
                         ) : (
-                          <a
-                            href={`/ai-daily-digest/note?id=${encodeURIComponent(star.id)}&title=${encodeURIComponent(star.title)}&url=${encodeURIComponent(star.url)}&type=${star.type}&date=${star.date}`}
+                          <button
+                            onClick={() => navigate(`/note?id=${encodeURIComponent(star.id)}&title=${encodeURIComponent(star.title)}&url=${encodeURIComponent(star.url)}&type=${star.type}&date=${star.date}`)}
                             className="text-notion-muted hover:text-notion-text"
                             title="添加笔记"
                           >
                             ✏️
-                          </a>
+                          </button>
                         )}
                         <button
                           onClick={() => handleUnstar(star.id)}
