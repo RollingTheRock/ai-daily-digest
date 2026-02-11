@@ -3,6 +3,7 @@
 import os
 from datetime import datetime
 from typing import Any
+from urllib.parse import quote
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
@@ -10,6 +11,7 @@ from sendgrid.helpers.mail import Mail
 from arxiv_sanity_bot.logger import get_logger
 from arxiv_sanity_bot.config import TIMEZONE
 from arxiv_sanity_bot.sources import GitHubRepo, HFModel, BlogPost
+from arxiv_sanity_bot.signature import generate_signature
 
 logger = get_logger(__name__)
 
@@ -275,6 +277,36 @@ class SendGridEmailSender(EmailSender):
             color: #586069;
             margin-right: 5px;
         }}
+        .card-actions {{
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e1e4e8;
+        }}
+        .btn {{
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            margin-right: 8px;
+        }}
+        .btn-star {{
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }}
+        .btn-star:hover {{
+            background: #ffeaa7;
+        }}
+        .btn-note {{
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }}
+        .btn-note:hover {{
+            background: #bee5eb;
+        }}
         .star-icon {{
             color: #f9a825;
         }}
@@ -337,6 +369,35 @@ class SendGridEmailSender(EmailSender):
 
         return html
 
+    def _build_action_buttons(
+        self,
+        content_id: str,
+        title: str,
+        url: str,
+        content_type: str,
+        date: str,
+    ) -> str:
+        """Build action buttons (star/note) for a content card."""
+        base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
+        if not base_url:
+            return ""  # No web URL configured, skip buttons
+
+        try:
+            signature = generate_signature(content_id, date)
+
+            star_url = f"{base_url}/star?id={quote(content_id, safe='')}&title={quote(title, safe='')}&url={quote(url, safe='')}&type={content_type}&date={date}&t={signature}"
+            note_url = f"{base_url}/note?id={quote(content_id, safe='')}&title={quote(title, safe='')}&url={quote(url, safe='')}&type={content_type}&date={date}&t={signature}"
+
+            return f'''
+                <div class="card-actions">
+                    <a href="{star_url}" class="btn btn-star" target="_blank">&#9733; Star</a>
+                    <a href="{note_url}" class="btn btn-note" target="_blank">&#9998; Note</a>
+                </div>
+            '''
+        except Exception as e:
+            logger.warning(f"Failed to generate action buttons: {e}")
+            return ""
+
     def _build_github_section(self, repos: list[GitHubRepo]) -> str:
         """Build GitHub trending section HTML."""
         html = """
@@ -352,10 +413,19 @@ class SendGridEmailSender(EmailSender):
                 '<div class="empty-state">No trending repositories found today.</div>'
             )
         else:
+            today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
             for repo in repos:
                 stars_today = f"+{repo.stars_today} today" if repo.stars_today else ""
                 language = (
                     f'<span class="tag">{repo.language}</span>' if repo.language else ""
+                )
+                content_id = f"github-{repo.name.replace('/', '-')}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=repo.name,
+                    url=repo.url,
+                    content_type="github",
+                    date=today,
                 )
 
                 html += f"""
@@ -367,6 +437,7 @@ class SendGridEmailSender(EmailSender):
                         {f'<span>{stars_today}</span>' if stars_today else ""}
                         {language}
                     </div>
+                    {action_buttons}
                 </div>
 """
 
@@ -388,11 +459,21 @@ class SendGridEmailSender(EmailSender):
                 </div>
 """
 
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
+
         # Models subsection
         if models:
             html += '<h3 style="font-size: 14px; color: #586069; margin: 15px 0 10px;">🔥 Models</h3>'
             for model in models:
                 tags = "".join(f'<span class="tag">{t}</span>' for t in model.tags[:3])
+                content_id = f"hf-model-{model.name.replace('/', '-')}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=model.name,
+                    url=model.url,
+                    content_type="huggingface",
+                    date=today,
+                )
                 html += f"""
                 <div class="card">
                     <h3 class="card-title"><a href="{model.url}">{model.name}</a></h3>
@@ -402,6 +483,7 @@ class SendGridEmailSender(EmailSender):
                         <span>❤️ {model.likes:,} likes</span>
                         {tags}
                     </div>
+                    {action_buttons}
                 </div>
 """
 
@@ -409,6 +491,14 @@ class SendGridEmailSender(EmailSender):
         if datasets:
             html += '<h3 style="font-size: 14px; color: #586069; margin: 15px 0 10px;">📊 Datasets</h3>'
             for dataset in datasets:
+                content_id = f"hf-dataset-{dataset.name.replace('/', '-')}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=dataset.name,
+                    url=dataset.url,
+                    content_type="huggingface",
+                    date=today,
+                )
                 html += f"""
                 <div class="card">
                     <h3 class="card-title"><a href="{dataset.url}">{dataset.name}</a></h3>
@@ -417,6 +507,7 @@ class SendGridEmailSender(EmailSender):
                         <span>⬇️ {dataset.downloads:,} downloads</span>
                         <span>❤️ {dataset.likes:,} likes</span>
                     </div>
+                    {action_buttons}
                 </div>
 """
 
@@ -424,6 +515,14 @@ class SendGridEmailSender(EmailSender):
         if spaces:
             html += '<h3 style="font-size: 14px; color: #586069; margin: 15px 0 10px;">🚀 Spaces</h3>'
             for space in spaces:
+                content_id = f"hf-space-{space.name.replace('/', '-')}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=space.name,
+                    url=space.url,
+                    content_type="huggingface",
+                    date=today,
+                )
                 html += f"""
                 <div class="card">
                     <h3 class="card-title"><a href="{space.url}">{space.name}</a></h3>
@@ -431,6 +530,7 @@ class SendGridEmailSender(EmailSender):
                     <div class="card-meta">
                         <span>❤️ {space.likes:,} likes</span>
                     </div>
+                    {action_buttons}
                 </div>
 """
 
@@ -450,6 +550,8 @@ class SendGridEmailSender(EmailSender):
                 </div>
 """
 
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
+
         if not papers:
             html += '<div class="empty-state">No arXiv papers found today.</div>'
         else:
@@ -458,10 +560,20 @@ class SendGridEmailSender(EmailSender):
                 arxiv_id = paper.get("arxiv", "")
                 summary = paper.get("summary", paper.get("abstract", ""))
                 url = paper.get("url", f"https://arxiv.org/abs/{arxiv_id}")
+                paper_date = paper.get("date", today)
 
                 # Truncate summary
                 if len(summary) > 300:
                     summary = summary[:297] + "..."
+
+                content_id = f"arxiv-{arxiv_id}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=title,
+                    url=url,
+                    content_type="arxiv",
+                    date=paper_date,
+                )
 
                 html += f"""
                 <div class="card">
@@ -470,6 +582,7 @@ class SendGridEmailSender(EmailSender):
                     <div class="card-meta">
                         <span>arXiv:{arxiv_id}</span>
                     </div>
+                    {action_buttons}
                 </div>
 """
 
@@ -492,6 +605,15 @@ class SendGridEmailSender(EmailSender):
             for post in posts:
                 date_str = post.published_on.strftime("%b %d")
                 author = f"by {post.author}" if post.author else ""
+                post_date = post.published_on.strftime("%Y-%m-%d")
+                content_id = f"blog-{post.source.lower().replace(' ', '-')}-{post.title[:30].lower().replace(' ', '-')}"
+                action_buttons = self._build_action_buttons(
+                    content_id=content_id,
+                    title=post.title,
+                    url=post.url,
+                    content_type="blog",
+                    date=post_date,
+                )
 
                 html += f"""
                 <div class="card">
@@ -502,6 +624,7 @@ class SendGridEmailSender(EmailSender):
                         <span>{date_str}</span>
                         {f'<span>{author}</span>' if author else ""}
                     </div>
+                    {action_buttons}
                 </div>
 """
 

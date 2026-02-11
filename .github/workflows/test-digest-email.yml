@@ -1,0 +1,182 @@
+name: Test AI Daily Digest Email
+
+on:
+  workflow_dispatch:
+    inputs:
+      email_provider:
+        description: "Email provider (smtp or sendgrid)"
+        default: "smtp"
+        type: choice
+        options:
+          - smtp
+          - sendgrid
+      dry_run:
+        description: "Dry run (don't send email)"
+        default: false
+        type: boolean
+
+jobs:
+  test_email:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+      with:
+        enable-cache: false
+
+    - name: Install dependencies
+      run: |
+        uv sync --no-cache
+
+    - name: Run test email
+      env:
+        # LLM Configuration
+        LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'deepseek' }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEEK_API_KEY }}
+        DEEPSEEK_API_BASE: ${{ secrets.DEEPSEEK_API_BASE }}
+        # Email Configuration - SMTP (QQ Mail, Gmail, etc.)
+        SMTP_HOST: ${{ secrets.SMTP_HOST }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT }}
+        SMTP_USER: ${{ secrets.SMTP_USER }}
+        SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
+        TO_EMAIL: ${{ secrets.TO_EMAIL }}
+        # Alternative: SendGrid
+        SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        # Web integration for favorites/notes
+        DIGEST_WEB_URL: "https://rollingtherock.github.io/ai-daily-digest"
+        SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        # Test mode
+        TEST_EMAIL_PROVIDER: ${{ github.event.inputs.email_provider }}
+        DRY_RUN: ${{ github.event.inputs.dry_run }}
+      run: |
+        echo "Running test email..."
+        echo "Provider: $TEST_EMAIL_PROVIDER"
+        echo "Dry run: $DRY_RUN"
+        echo "Web URL: $DIGEST_WEB_URL"
+
+        # Create test script
+        cat > test_email.py << 'EOF'
+        import asyncio
+        import os
+        from datetime import datetime, timedelta
+        from arxiv_sanity_bot.email.smtp_sender import SmtpEmailSender
+        from arxiv_sanity_bot.email.email_sender import SendGridEmailSender
+        from arxiv_sanity_bot.sources import GitHubRepo, HFModel, BlogPost
+        from arxiv_sanity_bot.config import TIMEZONE
+
+        async def main():
+            provider = os.environ.get("TEST_EMAIL_PROVIDER", "smtp")
+            dry_run = os.environ.get("DRY_RUN", "false").lower() == "true"
+
+            # Create test data
+            github_repos = [
+                GitHubRepo(
+                    name="test-repo/demo",
+                    url="https://github.com/test-repo/demo",
+                    description="This is a test repository for the email template",
+                    stars_total=1234,
+                    stars_today=56,
+                    language="Python"
+                ),
+                GitHubRepo(
+                    name="another/cool-project",
+                    url="https://github.com/another/cool-project",
+                    description="Another cool project to test the email template",
+                    stars_total=5678,
+                    stars_today=12,
+                    language="TypeScript"
+                )
+            ]
+
+            hf_models = [
+                HFModel(
+                    name="test-org/test-model",
+                    url="https://huggingface.co/test-org/test-model",
+                    description="A test model for email template",
+                    likes=123,
+                    downloads=45678,
+                    tags=["pytorch", "transformers"]
+                )
+            ]
+
+            hf_datasets = []
+            hf_spaces = []
+
+            arxiv_papers = [
+                {
+                    "arxiv": "2401.12345",
+                    "title": "Test Paper: A Sample ArXiv Paper for Email Testing",
+                    "summary": "This is a test summary of an arXiv paper. It demonstrates how the paper will appear in the email template with the new star and note buttons.",
+                    "url": "https://arxiv.org/abs/2401.12345",
+                    "date": datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
+                }
+            ]
+
+            blog_posts = [
+                BlogPost(
+                    title="Test Blog Post: Sample Technical Blog",
+                    url="https://example.com/test-blog-post",
+                    summary="This is a test blog post to demonstrate the email template with action buttons.",
+                    source="Test Blog",
+                    published_on=datetime.now(tz=TIMEZONE) - timedelta(days=1)
+                )
+            ]
+
+            if dry_run:
+                print("DRY RUN: Would send email with:")
+                print(f"  GitHub repos: {len(github_repos)}")
+                print(f"  HF models: {len(hf_models)}")
+                print(f"  ArXiv papers: {len(arxiv_papers)}")
+                print(f"  Blog posts: {len(blog_posts)}")
+                print(f"  Web URL: {os.environ.get('DIGEST_WEB_URL', 'Not set')}")
+                print(f"  Secret Key: {'Set' if os.environ.get('SECRET_KEY') else 'Not set'}")
+                return
+
+            # Send test email
+            try:
+                if provider == "smtp":
+                    sender = SmtpEmailSender()
+                else:
+                    sender = SendGridEmailSender()
+
+                result = sender.send_digest(
+                    github_repos=github_repos,
+                    hf_models=hf_models,
+                    hf_datasets=hf_datasets,
+                    hf_spaces=hf_spaces,
+                    arxiv_papers=arxiv_papers,
+                    blog_posts=blog_posts,
+                    to_email=os.environ["TO_EMAIL"],
+                    from_email=os.environ["FROM_EMAIL"],
+                    subject=f"🧪 Test: AI Daily Digest - {datetime.now().strftime('%Y-%m-%d')}",
+                    daily_insight="This is a test email to verify the new star and note buttons are working correctly in the email template. Try clicking the buttons below!"
+                )
+
+                if result:
+                    print("✅ Test email sent successfully!")
+                else:
+                    print("❌ Failed to send test email")
+                    exit(1)
+            except Exception as e:
+                print(f"❌ Error: {e}")
+                import traceback
+                traceback.print_exc()
+                exit(1)
+
+        if __name__ == "__main__":
+            asyncio.run(main())
+        EOF
+
+        uv run python test_email.py
