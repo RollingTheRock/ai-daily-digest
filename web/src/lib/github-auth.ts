@@ -48,12 +48,18 @@ export async function startDeviceFlow(): Promise<DeviceFlowResponse> {
 
     return response.json();
   } catch (error) {
+    console.error("Device Flow Error:", error);
     if (error instanceof TypeError && error.message === "Failed to fetch") {
       throw new Error(
-        "无法连接到 GitHub。可能原因：\n" +
-        "1. 网络连接问题\n" +
-        "2. 浏览器扩展阻止了请求（如广告拦截器）\n" +
-        "3. 需要代理/VPN 访问 GitHub"
+        "无法连接到 GitHub (Failed to fetch)。\n\n" +
+        "可能原因：\n" +
+        "1. 浏览器隐私模式阻止了跨域请求\n" +
+        "2. 需要允许第三方 Cookie\n" +
+        "3. 浏览器扩展阻止\n\n" +
+        "请尝试：\n" +
+        "• 关闭隐私/无痕模式\n" +
+        "• 允许此网站的第三方 Cookie\n" +
+        "• 禁用广告拦截器后重试"
       );
     }
     throw error;

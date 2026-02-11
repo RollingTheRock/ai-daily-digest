@@ -9,6 +9,21 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [, setPolling] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+
+  const testConnection = async () => {
+    setDebugInfo("测试中...");
+    try {
+      // 测试 GitHub API 连接
+      const response = await fetch("https://api.github.com", {
+        method: "HEAD",
+        mode: "cors",
+      });
+      setDebugInfo(`GitHub API: HTTP ${response.status} - 连接正常`);
+    } catch (err) {
+      setDebugInfo(`连接失败: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
 
   const handleLogin = async () => {
     try {
@@ -57,17 +72,30 @@ export default function Login() {
         收藏和整理你的AI日报内容，随时记录想法和笔记
       </p>
 
-      {error && (
+      {(error || debugInfo) && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6 max-w-sm whitespace-pre-wrap text-sm">
-          {error}
-          <div className="mt-3 pt-3 border-t border-red-200">
-            <button
-              onClick={() => setError(null)}
-              className="text-sm underline hover:text-red-800"
-            >
-              清除错误，重试
-            </button>
-          </div>
+          {error && (<>
+            {error}
+            <div className="mt-3 pt-3 border-t border-red-200 flex gap-3">
+              <button
+                onClick={() => setError(null)}
+                className="text-sm underline hover:text-red-800"
+              >
+                清除错误，重试
+              </button>
+              <button
+                onClick={testConnection}
+                className="text-sm underline hover:text-red-800"
+              >
+                🧪 测试连接
+              </button>
+            </div>
+          </>)}
+          {debugInfo && (
+            <div className="mt-2 text-xs text-notion-muted border-t border-red-100 pt-2">
+              调试: {debugInfo}
+            </div>
+          )}
         </div>
       )}
 
