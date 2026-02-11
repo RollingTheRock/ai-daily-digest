@@ -58,8 +58,16 @@ export default function Login() {
       </p>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6 max-w-sm">
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6 max-w-sm whitespace-pre-wrap text-sm">
           {error}
+          <div className="mt-3 pt-3 border-t border-red-200">
+            <button
+              onClick={() => setError(null)}
+              className="text-sm underline hover:text-red-800"
+            >
+              清除错误，重试
+            </button>
+          </div>
         </div>
       )}
 

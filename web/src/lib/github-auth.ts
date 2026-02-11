@@ -27,24 +27,37 @@ export interface TokenResponse {
  * 开始 Device Flow 认证
  */
 export async function startDeviceFlow(): Promise<DeviceFlowResponse> {
-  const response = await fetch("https://github.com/login/device/code", {
-    method: "POST",
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      client_id: config.githubClientId,
-      scope: "repo",
-    }),
-  });
+  try {
+    const response = await fetch("https://github.com/login/device/code", {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        client_id: config.githubClientId,
+        scope: "repo",
+      }),
+    });
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Failed to start device flow: ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`HTTP ${response.status}: ${error}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error(
+        "无法连接到 GitHub。可能原因：\n" +
+        "1. 网络连接问题\n" +
+        "2. 浏览器扩展阻止了请求（如广告拦截器）\n" +
+        "3. 需要代理/VPN 访问 GitHub"
+      );
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
@@ -56,6 +69,7 @@ export async function pollForToken(
 ): Promise<TokenResponse> {
   const response = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
+    mode: "cors",
     headers: {
       "Accept": "application/json",
       "Content-Type": "application/x-www-form-urlencoded",
