@@ -12,9 +12,15 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   const { redirect } = req.query;
   const state = redirect && typeof redirect === "string" ? redirect : "/";
 
-  const redirectUri = process.env.VERCEL_URL
+  // 优先使用 REDIRECT_URI 环境变量，否则根据 VERCEL_URL 生成
+  const redirectUri = process.env.REDIRECT_URI
+    ? process.env.REDIRECT_URI
+    : process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}/api/auth/callback`
     : "http://localhost:3000/api/auth/callback";
+
+  // eslint-disable-next-line no-console
+  console.log("[OAuth Login] redirect_uri:", redirectUri);
 
   const githubAuthUrl =
     `https://github.com/login/oauth/authorize?` +

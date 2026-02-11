@@ -4,11 +4,17 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || "";
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || "";
-const REDIRECT_URI = process.env.VERCEL_URL
+// 优先使用 REDIRECT_URI 环境变量，否则根据 VERCEL_URL 生成
+const REDIRECT_URI = process.env.REDIRECT_URI
+  ? process.env.REDIRECT_URI
+  : process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}/api/auth/callback`
   : "http://localhost:3000/api/auth/callback";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // eslint-disable-next-line no-console
+  console.log("[OAuth Callback] redirect_uri:", REDIRECT_URI);
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
