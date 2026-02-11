@@ -133,9 +133,16 @@ async function createOrUpdateFile(
     sha = existing.sha;
   }
 
+  // 使用支持 Unicode 的 Base64 编码
+  const base64Content = (() => {
+    const utf8Bytes = new TextEncoder().encode(content);
+    const binaryString = Array.from(utf8Bytes, (byte) => String.fromCharCode(byte)).join("");
+    return btoa(binaryString);
+  })();
+
   const body: Record<string, unknown> = {
     message,
-    content: btoa(content),
+    content: base64Content,
   };
 
   if (sha) {
