@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isLoggedIn, getCurrentUser, logout, type GitHubUser } from "../lib/github-auth";
-import { getStars, removeStar, getStats, type StarItem } from "../lib/github-storage";
+import { getStars, removeStar, getStats, invalidateStarsCache, type StarItem } from "../lib/github-storage";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -160,6 +160,17 @@ export default function Home() {
             title="刷新"
           >
             {loading ? "⟳" : "🔄"}
+          </button>
+          <button
+            onClick={() => {
+              invalidateStarsCache();
+              loadData();
+            }}
+            disabled={loading}
+            className="text-sm text-notion-muted hover:text-notion-text px-2 py-1 rounded ml-2"
+            title="强制刷新（清除缓存）"
+          >
+            {loading ? "⟳" : "🔄💥"}
           </button>
         </div>
       </div>

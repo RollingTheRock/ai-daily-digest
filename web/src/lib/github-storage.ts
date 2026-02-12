@@ -1,6 +1,11 @@
 import { config } from "../config";
 import { getToken, getAuthHeaders, getCurrentUser } from "./github-auth";
 
+// 本地缓存键
+const STARS_CACHE_KEY = "aidigest_stars_cache";
+const STARS_CACHE_TIME_KEY = "aidigest_stars_cache_time";
+const CACHE_VALIDITY_MS = 5 * 60 * 1000; // 5分钟缓存有效期
+
 // 数据类型定义
 export interface StarItem {
   id: string;
@@ -89,12 +94,13 @@ export async function ensureDataRepo(): Promise<void> {
     throw new Error(`Failed to check repo: ${response.status} ${response.statusText}`);
   }
 
-  // 仓库已存在，确保数据文件也存在
-  // 等待一下确保仓库完全可用
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  await initDataFiles().catch(() => {
-    // 忽略初始化错误（文件可能已存在）
-  });
+  // 仓库已存在，检查数据文件是否存在（仅在必要时初始化）
+  const repo = `${user.login}/${config.dataRepoName}`;
+  const starsExist = await readFile(repo, "data/stars.json");
+  if (starsExist === null) {
+    console.log("Data files not found, initializing...");
+    await initDataFiles();
+  }
 }
 
 /**
@@ -122,6 +128,8 @@ async function createOrUpdateFile(
   const token = getToken();
   if (!token) throw new Error("Not authenticated");
 
+  console.log(`[createOrUpdateFile] ${path} in ${repo}`);
+
   // 检查文件是否存在以获取 SHA
   const existingResponse = await fetch(`${GITHUB_API}/repos/${repo}/contents/${path}`, {
     headers: getAuthHeaders(),
@@ -131,6 +139,11 @@ async function createOrUpdateFile(
   if (existingResponse.ok) {
     const existing = await existingResponse.json();
     sha = existing.sha;
+    console.log(`[createOrUpdateFile] File exists, sha: ${sha?.substring(0, 8)}...`);
+  } else if (existingResponse.status === 404) {
+    console.log(`[createOrUpdateFile] File does not exist, will create new`);
+  } else {
+    console.error(`[createOrUpdateFile] Error checking file: ${existingResponse.status}`);
   }
 
   // 使用支持 Unicode 的 Base64 编码
@@ -149,6 +162,7 @@ async function createOrUpdateFile(
     body.sha = sha;
   }
 
+  console.log(`[createOrUpdateFile] Sending PUT request...`);
   const response = await fetch(`${GITHUB_API}/repos/${repo}/contents/${path}`, {
     method: "PUT",
     headers: getAuthHeaders(),
@@ -157,8 +171,11 @@ async function createOrUpdateFile(
 
   if (!response.ok) {
     const error = await response.text();
+    console.error(`[createOrUpdateFile] Failed: ${response.status} ${error}`);
     throw new Error(`Failed to save file: ${error}`);
   }
+
+  console.log(`[createOrUpdateFile] Success: ${response.status}`);
 }
 
 /**
@@ -178,25 +195,87 @@ async function readFile(repo: string, path: string): Promise<string | null> {
   }
 
   const data = await response.json();
-  return atob(data.content);
+  // 使用支持 Unicode 的 Base64 解码
+  const base64Content = data.content.replace(/\s/g, "");
+  const utf8Bytes = Uint8Array.from(atob(base64Content), (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(utf8Bytes);
+}
+
+// ==================== Cache API ====================
+
+/**
+ * 从本地缓存获取 stars
+ */
+function getCachedStars(): StarItem[] | null {
+  try {
+    const cached = localStorage.getItem(STARS_CACHE_KEY);
+    const cachedTime = localStorage.getItem(STARS_CACHE_TIME_KEY);
+
+    if (!cached || !cachedTime) return null;
+
+    const age = Date.now() - parseInt(cachedTime, 10);
+    if (age > CACHE_VALIDITY_MS) return null;
+
+    return JSON.parse(cached);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 保存 stars 到本地缓存
+ */
+function setCachedStars(stars: StarItem[]): void {
+  try {
+    localStorage.setItem(STARS_CACHE_KEY, JSON.stringify(stars));
+    localStorage.setItem(STARS_CACHE_TIME_KEY, Date.now().toString());
+  } catch {
+    // 忽略缓存错误
+  }
+}
+
+/**
+ * 清除 stars 缓存
+ */
+export function invalidateStarsCache(): void {
+  try {
+    localStorage.removeItem(STARS_CACHE_KEY);
+    localStorage.removeItem(STARS_CACHE_TIME_KEY);
+  } catch {
+    // 忽略错误
+  }
 }
 
 // ==================== Stars API ====================
 
 /**
- * 获取所有收藏
+ * 获取所有收藏（优先从缓存读取）
  */
 export async function getStars(): Promise<StarItem[]> {
+  // 先尝试从缓存读取
+  const cached = getCachedStars();
+  if (cached) {
+    console.log("[getStars] Returning cached data:", cached.length, "items");
+  }
+
   await ensureDataRepo();
   const repo = await getRepoFullName();
 
   const content = await readFile(repo, "data/stars.json");
-  if (!content) return [];
+  if (!content) {
+    console.log("[getStars] No content from server");
+    return cached || [];
+  }
 
   try {
-    return JSON.parse(content);
-  } catch {
-    return [];
+    const stars = JSON.parse(content) as StarItem[];
+    console.log("[getStars] From server:", stars.length, "items");
+    // 更新缓存
+    setCachedStars(stars);
+    return stars;
+  } catch (e) {
+    console.error("[getStars] Parse error:", e);
+    return cached || [];
   }
 }
 
@@ -204,10 +283,13 @@ export async function getStars(): Promise<StarItem[]> {
  * 添加收藏
  */
 export async function addStar(star: Omit<StarItem, "starred_at">): Promise<StarItem> {
+  console.log("[addStar] Starting...", star);
   await ensureDataRepo();
   const repo = await getRepoFullName();
+  console.log("[addStar] Repo:", repo);
 
   const stars = await getStars();
+  console.log("[addStar] Existing stars count:", stars.length);
 
   const newStar: StarItem = {
     ...star,
@@ -222,7 +304,13 @@ export async function addStar(star: Omit<StarItem, "starred_at">): Promise<StarI
     stars.unshift(newStar);
   }
 
+  console.log("[addStar] Writing to file, total stars:", stars.length);
   await createOrUpdateFile(repo, "data/stars.json", JSON.stringify(stars, null, 2), `Add star: ${star.title}`);
+  console.log("[addStar] File written successfully");
+
+  // 更新本地缓存
+  setCachedStars(stars);
+  console.log("[addStar] Cache updated");
 
   return newStar;
 }
@@ -242,6 +330,9 @@ export async function removeStar(id: string): Promise<void> {
   }
 
   await createOrUpdateFile(repo, "data/stars.json", JSON.stringify(filtered, null, 2), `Remove star: ${id}`);
+
+  // 更新本地缓存
+  setCachedStars(filtered);
 }
 
 /**
