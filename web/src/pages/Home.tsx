@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isLoggedIn, getCurrentUser, logout, type GitHubUser } from "../lib/github-auth";
-import { getStars, removeStar, getStats, invalidateStarsCache, type StarItem } from "../lib/github-storage";
+import { getStars, removeStar, getStats, invalidateStarsCache, getNoteByContentId, type StarItem, type NoteItem } from "../lib/github-storage";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -11,6 +11,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("all");
+  const [viewingNote, setViewingNote] = useState<NoteItem | null>(null);
+  const [loadingNote, setLoadingNote] = useState(false);
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -71,6 +73,24 @@ export default function Home() {
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleViewNote = async (star: StarItem) => {
+    if (!star.note_id) return;
+
+    try {
+      setLoadingNote(true);
+      const note = await getNoteByContentId(star.id);
+      if (note) {
+        setViewingNote(note);
+      } else {
+        alert("笔记未找到");
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "加载笔记失败");
+    } finally {
+      setLoadingNote(false);
+    }
   };
 
   const filteredStars = stars.filter((star) => {
@@ -242,7 +262,14 @@ export default function Home() {
                       </div>
                       <div className="flex items-center gap-2">
                         {star.note_id ? (
-                          <span className="text-amber-500">📝</span>
+                          <button
+                            onClick={() => handleViewNote(star)}
+                            disabled={loadingNote}
+                            className="text-amber-500 hover:text-amber-600"
+                            title="查看笔记"
+                          >
+                            📝
+                          </button>
                         ) : (
                           <button
                             onClick={() => navigate(`/note?id=${encodeURIComponent(star.id)}&title=${encodeURIComponent(star.title)}&url=${encodeURIComponent(star.url)}&type=${star.type}&date=${star.date}`)}
@@ -266,6 +293,85 @@ export default function Home() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Note Detail Modal */}
+      {viewingNote && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">📝 笔记详情</h2>
+                <button
+                  onClick={() => setViewingNote(null)}
+                  className="text-notion-muted hover:text-notion-text"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="bg-notion-bg rounded-lg p-4 mb-6">
+                <div className="text-sm text-notion-muted mb-1">关联内容</div>
+                <a
+                  href={viewingNote.content_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium hover:underline"
+                >
+                  {viewingNote.content_title}
+                </a>
+              </div>
+
+              <div className="space-y-4">
+                {viewingNote.thoughts && (
+                  <div>
+                    <h3 className="text-sm font-medium text-notion-muted mb-2">💭 想法</h3>
+                    <div className="bg-gray-50 rounded-lg p-3 whitespace-pre-wrap">{viewingNote.thoughts}</div>
+                  </div>
+                )}
+
+                {viewingNote.questions && (
+                  <div>
+                    <h3 className="text-sm font-medium text-notion-muted mb-2">❓ 疑问</h3>
+                    <div className="bg-gray-50 rounded-lg p-3 whitespace-pre-wrap">{viewingNote.questions}</div>
+                  </div>
+                )}
+
+                {viewingNote.todos && (
+                  <div>
+                    <h3 className="text-sm font-medium text-notion-muted mb-2">✅ TODO</h3>
+                    <div className="bg-gray-50 rounded-lg p-3 whitespace-pre-wrap">{viewingNote.todos}</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 text-xs text-notion-muted">
+                创建于 {new Date(viewingNote.created_at).toLocaleString()}
+                {viewingNote.updated_at !== viewingNote.created_at && (
+                  <span> · 更新于 {new Date(viewingNote.updated_at).toLocaleString()}</span>
+                )}
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={() => setViewingNote(null)}
+                  className="btn-secondary flex-1"
+                >
+                  关闭
+                </button>
+                <button
+                  onClick={() => {
+                    setViewingNote(null);
+                    navigate(`/note?id=${encodeURIComponent(viewingNote.content_id)}&title=${encodeURIComponent(viewingNote.content_title)}&url=${encodeURIComponent(viewingNote.content_url)}&type=${viewingNote.content_type}&date=${viewingNote.date}`);
+                  }}
+                  className="btn-primary flex-1"
+                >
+                  ✏️ 编辑笔记
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
