@@ -4,6 +4,8 @@ import { getToken, getAuthHeaders, getCurrentUser } from "./github-auth";
 // 本地缓存键
 const STARS_CACHE_KEY = "aidigest_stars_cache";
 const STARS_CACHE_TIME_KEY = "aidigest_stars_cache_time";
+const NOTES_CACHE_KEY = "aidigest_notes_cache";
+const NOTES_CACHE_TIME_KEY = "aidigest_notes_cache_time";
 const CACHE_VALIDITY_MS = 5 * 60 * 1000; // 5分钟缓存有效期
 
 // 数据类型定义
@@ -246,6 +248,49 @@ export function invalidateStarsCache(): void {
   }
 }
 
+/**
+ * 从本地缓存获取 notes
+ */
+function getCachedNotes(): NoteItem[] | null {
+  try {
+    const cached = localStorage.getItem(NOTES_CACHE_KEY);
+    const cachedTime = localStorage.getItem(NOTES_CACHE_TIME_KEY);
+
+    if (!cached || !cachedTime) return null;
+
+    const age = Date.now() - parseInt(cachedTime, 10);
+    if (age > CACHE_VALIDITY_MS) return null;
+
+    return JSON.parse(cached);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 保存 notes 到本地缓存
+ */
+function setCachedNotes(notes: NoteItem[]): void {
+  try {
+    localStorage.setItem(NOTES_CACHE_KEY, JSON.stringify(notes));
+    localStorage.setItem(NOTES_CACHE_TIME_KEY, Date.now().toString());
+  } catch {
+    // 忽略缓存错误
+  }
+}
+
+/**
+ * 清除 notes 缓存
+ */
+export function invalidateNotesCache(): void {
+  try {
+    localStorage.removeItem(NOTES_CACHE_KEY);
+    localStorage.removeItem(NOTES_CACHE_TIME_KEY);
+  } catch {
+    // 忽略错误
+  }
+}
+
 // ==================== Stars API ====================
 
 /**
@@ -364,19 +409,33 @@ export async function updateStarTags(id: string, tags: string[]): Promise<void> 
 // ==================== Notes API ====================
 
 /**
- * 获取所有笔记
+ * 获取所有笔记（优先从缓存读取）
  */
 export async function getNotes(): Promise<NoteItem[]> {
+  // 先尝试从缓存读取
+  const cached = getCachedNotes();
+  if (cached) {
+    console.log("[getNotes] Returning cached data:", cached.length, "items");
+  }
+
   await ensureDataRepo();
   const repo = await getRepoFullName();
 
   const content = await readFile(repo, "data/notes.json");
-  if (!content) return [];
+  if (!content) {
+    console.log("[getNotes] No content from server");
+    return cached || [];
+  }
 
   try {
-    return JSON.parse(content);
-  } catch {
-    return [];
+    const notes = JSON.parse(content) as NoteItem[];
+    console.log("[getNotes] From server:", notes.length, "items");
+    // 更新缓存
+    setCachedNotes(notes);
+    return notes;
+  } catch (e) {
+    console.error("[getNotes] Parse error:", e);
+    return cached || [];
   }
 }
 
@@ -389,7 +448,7 @@ export async function getNoteByContentId(contentId: string): Promise<NoteItem | 
 }
 
 /**
- * 添加笔记
+ * 添加笔记（如果已存在则更新）
  */
 export async function addNote(
   contentId: string,
@@ -406,6 +465,46 @@ export async function addNote(
 
   const notes = await getNotes();
 
+  // 检查是否已有该内容的笔记
+  const existingIndex = notes.findIndex((n) => n.content_id === contentId);
+
+  if (existingIndex >= 0) {
+    // 更新现有笔记
+    notes[existingIndex] = {
+      ...notes[existingIndex],
+      thoughts,
+      questions,
+      todos,
+      updated_at: new Date().toISOString(),
+    };
+
+    await createOrUpdateFile(
+      repo,
+      "data/notes.json",
+      JSON.stringify(notes, null, 2),
+      `Update note for: ${contentTitle}`
+    );
+
+    // 更新 star 的 note_id（如果存在）
+    const stars = await getStars();
+    const star = stars.find((s) => s.id === contentId);
+    if (star && !star.note_id) {
+      star.note_id = notes[existingIndex].id;
+      await createOrUpdateFile(
+        repo,
+        "data/stars.json",
+        JSON.stringify(stars, null, 2),
+        `Link note to star: ${contentTitle}`
+      );
+    }
+
+    // 更新笔记缓存
+    setCachedNotes(notes);
+
+    return notes[existingIndex];
+  }
+
+  // 创建新笔记
   const now = new Date().toISOString();
   const newNote: NoteItem = {
     id: `note_${Date.now()}`,
@@ -433,6 +532,9 @@ export async function addNote(
     star.note_id = newNote.id;
     await createOrUpdateFile(repo, "data/stars.json", JSON.stringify(stars, null, 2), `Link note to star: ${contentTitle}`);
   }
+
+  // 更新笔记缓存
+  setCachedNotes(notes);
 
   return newNote;
 }
@@ -467,6 +569,9 @@ export async function updateNote(
     `Update note: ${notes[noteIndex].content_title}`
   );
 
+  // 更新笔记缓存
+  setCachedNotes(notes);
+
   return notes[noteIndex];
 }
 
@@ -495,6 +600,9 @@ export async function deleteNote(noteId: string): Promise<void> {
     delete star.note_id;
     await createOrUpdateFile(repo, "data/stars.json", JSON.stringify(stars, null, 2), `Unlink note from star: ${star.title}`);
   }
+
+  // 更新笔记缓存
+  setCachedNotes(filtered);
 }
 
 // ==================== Stats API ====================

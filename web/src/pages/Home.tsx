@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isLoggedIn, getCurrentUser, logout, type GitHubUser } from "../lib/github-auth";
-import { getStars, removeStar, getStats, invalidateStarsCache, getNoteByContentId, type StarItem, type NoteItem } from "../lib/github-storage";
+import { getStars, removeStar, getStats, getNotes, invalidateStarsCache, getNoteByContentId, type StarItem, type NoteItem } from "../lib/github-storage";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -13,6 +13,7 @@ export default function Home() {
   const [filter, setFilter] = useState("all");
   const [viewingNote, setViewingNote] = useState<NoteItem | null>(null);
   const [loadingNote, setLoadingNote] = useState(false);
+  const [orphanNotes, setOrphanNotes] = useState<NoteItem[]>([]); // 没有收藏的笔记
 
   useEffect(() => {
     checkAuthAndLoadData();
@@ -51,9 +52,18 @@ export default function Home() {
       setLoading(true);
       setError(null);
 
-      const [starsData, statsData] = await Promise.all([getStars(), getStats()]);
+      const [starsData, statsData, notesData] = await Promise.all([
+        getStars(),
+        getStats(),
+        getNotes()
+      ]);
       setStars(starsData);
       setStats(statsData);
+
+      // 找出没有对应收藏的笔记（孤立笔记）
+      const starIds = new Set(starsData.map(s => s.id));
+      const orphanNotesData = notesData.filter(n => !starIds.has(n.content_id));
+      setOrphanNotes(orphanNotesData);
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载数据失败");
     } finally {
@@ -103,15 +113,41 @@ export default function Home() {
     return true;
   });
 
+  // 将孤儿笔记转换为虚拟 StarItem 以便统一渲染
+  const orphanNotesAsStars: StarItem[] = orphanNotes.map(note => ({
+    id: note.content_id,
+    title: note.content_title,
+    url: note.content_url,
+    type: note.content_type,
+    date: note.date,
+    starred_at: note.created_at,
+    tags: [],
+    note_id: note.id,
+  }));
+
+  // 合并收藏和孤儿笔记
+  const allItems = [...filteredStars, ...orphanNotesAsStars];
+
+  // 过滤孤儿笔记（只在 "all" 或 "with_notes" 筛选器下显示）
+  const filteredItems = allItems.filter(item => {
+    if (filter === 'all') return true;
+    if (filter === 'with_notes') return item.note_id;
+    // 孤儿笔记没有 star，所以不显示在其他类型筛选下
+    if (orphanNotesAsStars.some(o => o.id === item.id)) {
+      return filter === 'all' || filter === 'with_notes';
+    }
+    return true;
+  });
+
   // Group by date
-  const groupedStars = filteredStars.reduce((acc, star) => {
-    const date = star.date;
+  const groupedItems = filteredItems.reduce((acc, item) => {
+    const date = item.date;
     if (!acc[date]) acc[date] = [];
-    acc[date].push(star);
+    acc[date].push(item);
     return acc;
   }, {} as Record<string, StarItem[]>);
 
-  const sortedDates = Object.keys(groupedStars).sort().reverse();
+  const sortedDates = Object.keys(groupedItems).sort().reverse();
 
   if (loading) {
     return (
@@ -238,7 +274,7 @@ export default function Home() {
                 📅 {date}
               </div>
               <div className="space-y-3">
-                {groupedStars[date].map((star) => (
+                {groupedItems[date].map((star) => (
                   <div key={star.id} className="card">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -279,13 +315,19 @@ export default function Home() {
                             ✏️
                           </button>
                         )}
-                        <button
-                          onClick={() => handleUnstar(star.id)}
-                          className="text-notion-muted hover:text-red-500"
-                          title="取消收藏"
-                        >
-                          ⭐
-                        </button>
+                        {stars.some(s => s.id === star.id) ? (
+                          <button
+                            onClick={() => handleUnstar(star.id)}
+                            className="text-notion-muted hover:text-red-500"
+                            title="取消收藏"
+                          >
+                            ⭐
+                          </button>
+                        ) : (
+                          <span className="text-xs text-amber-600 px-2 py-1 bg-amber-50 rounded" title="仅笔记（未收藏）">
+                            仅笔记
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
