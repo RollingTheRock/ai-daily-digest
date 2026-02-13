@@ -25,6 +25,7 @@ dependencies = [
     "feedparser>=6.0.0",
     "beautifulsoup4>=4.12.0",
     "sendgrid>=6.11.0",
+    "python-dateutil>=2.8.0",
     ]
 
 [build-system]
@@ -52,6 +53,16 @@ test = [
     "pytest-cov",
     "mock-firestore",
     "freezegun"
+]
+twitter = [
+    "tweepy>=4.14.0",
+]
+youtube = [
+    "google-api-python-client>=2.100.0",
+]
+all = [
+    "tweepy>=4.14.0",
+    "google-api-python-client>=2.100.0",
 ]
 
 #[options.entry_points]

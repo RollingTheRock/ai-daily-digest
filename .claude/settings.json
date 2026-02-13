@@ -1,0 +1,23 @@
+{
+  "enabledPlugins": {
+    "compound-engineering@compound-engineering": true
+  },
+  "commands": {
+    "workflows:plan": {
+      "source": "plugin",
+      "plugin": "compound-engineering"
+    },
+    "workflows:work": {
+      "source": "plugin",
+      "plugin": "compound-engineering"
+    },
+    "workflows:review": {
+      "source": "plugin",
+      "plugin": "compound-engineering"
+    },
+    "workflows:compound": {
+      "source": "plugin",
+      "plugin": "compound-engineering"
+    }
+  }
+}

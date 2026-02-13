@@ -76,3 +76,48 @@ FIREBASE_COLLECTION = "arxiv-papers"
 
 # Web integration for favorites/notes
 DIGEST_WEB_URL = "https://yourusername.github.io/ai-digest"  # Set via env var DIGEST_WEB_URL
+
+# Content source configuration
+# Comma-separated list of sources to enable: arxiv, blog, github, huggingface, twitter, youtube
+CONTENT_SOURCES = ["arxiv", "blog"]  # Default sources
+
+# Twitter/X API settings
+TWITTER_BEARER_TOKEN = ""  # Set via env var TWITTER_BEARER_TOKEN
+TWITTER_MIN_LIKES = 100  # Minimum likes threshold for tweets
+TWITTER_MAX_TWEETS_PER_USER = 5  # Max tweets per account
+TWITTER_DEFAULT_ACCOUNTS = [  # Core AI accounts to monitor
+    "_akhaliq",     # AK - AI news aggregator
+    "karpathy",     # Andrej Karpathy
+    "goodside",     # Riley Goodside - Prompt Engineering
+    "ylecun",       # Yann LeCun
+    "ai__pub",      # AI Pub
+]
+
+# YouTube Data API settings
+YOUTUBE_API_KEY = ""  # Set via env var YOUTUBE_API_KEY
+YOUTUBE_MIN_VIEWS = 10000  # Minimum view count threshold
+YOUTUBE_MIN_DURATION_MINUTES = 5  # Minimum video duration
+YOUTUBE_MAX_VIDEOS_PER_CHANNEL = 3  # Max videos per channel
+YOUTUBE_DEFAULT_CHANNELS = [  # Curated AI channels
+    "UCXUPKJOdoz9XylBV4T2hpdQ",  # Two Minute Papers
+    "UCvjgXvBlbQiydffZUzzmYJw",  # Yannic Kilcher
+    "UCbfYPyITQ-7l4upoX8nvctg",  # AI Explained
+    "UCZHmQk67mSJgfCCTnMGEA7w",  # David Shapiro
+    "UCP7jMXSY2xbc3KCAE0MHQ-A",  # DeepLearningAI
+    "UC1LpsuAUaKoMzzJSEt5Wpgw",  # Lex Fridman
+]
+
+# Keyword filters for content relevance
+CONTENT_KEYWORDS = {
+    "core": ["LLM", "large language model", "transformer", "GPT", "Claude", "GPT-4", "GPT-4o"],
+    "multimodal": ["multimodal", "vision-language", "image generation", "diffusion", "DALL-E", "Midjourney"],
+    "agents": ["agent", "tool use", "function calling", "RAG", "retrieval", "autonomous"],
+    "training": ["fine-tuning", "RLHF", "alignment", "safety", "training", "inference"],
+}
+
+# Substack newsletters to monitor
+SUBSTACK_FEEDS = {
+    "Import AI": "https://importai.substack.com/feed",
+    "The Batch": "https://www.deeplearning.ai/the-batch/feed",
+    # "TLDR AI": "https://tldr.tech/ai/feed",  # Optional alternative
+}

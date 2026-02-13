@@ -5,6 +5,8 @@ from typing import Any
 
 from arxiv_sanity_bot.logger import get_logger
 from arxiv_sanity_bot.models.openai import OpenAI
+from arxiv_sanity_bot.schemas import ContentItem
+from arxiv_sanity_bot.config import CONTENT_KEYWORDS
 
 logger = get_logger(__name__)
 
@@ -124,3 +126,194 @@ class ContentProcessor:
             results.append(paper_copy)
 
         return results
+
+    def filter_by_keywords(
+        self,
+        items: list[ContentItem],
+        keywords: dict[str, list[str]] | None = None,
+        require_match: bool = True,
+    ) -> list[ContentItem]:
+        """
+        Filter content items by keyword relevance.
+
+        Args:
+            items: List of ContentItem to filter
+            keywords: Keyword categories (defaults to CONTENT_KEYWORDS config)
+            require_match: If True, only return items matching keywords
+
+        Returns:
+            Filtered list of items
+        """
+        if keywords is None:
+            keywords = CONTENT_KEYWORDS
+
+        all_keywords = []
+        for category_keywords in keywords.values():
+            all_keywords.extend(category_keywords)
+
+        filtered: list[ContentItem] = []
+        for item in items:
+            # Combine title and content for matching
+            text = f"{item.title} {item.content} {item.summary}".lower()
+
+            # Check if any keyword matches
+            matches = any(kw.lower() in text for kw in all_keywords)
+
+            if matches or not require_match:
+                filtered.append(item)
+
+        logger.info(f"Keyword filter: {len(filtered)}/{len(items)} items matched")
+        return filtered
+
+    def filter_by_engagement(
+        self,
+        items: list[ContentItem],
+        min_score: int | None = None,
+    ) -> list[ContentItem]:
+        """
+        Filter content items by engagement score.
+
+        Args:
+            items: List of ContentItem to filter
+            min_score: Minimum engagement score (varies by source type)
+
+        Returns:
+            Filtered list of items
+        """
+        if min_score is None:
+            # Default thresholds per source type
+            min_score_by_type = {
+                "twitter": 100,  # min likes + retweets*2
+                "youtube": 10000,  # min views
+                "blog": 0,
+                "arxiv": 0,
+            }
+        else:
+            min_score_by_type = {t: min_score for t in ["twitter", "youtube", "blog", "arxiv"]}
+
+        filtered: list[ContentItem] = []
+        for item in items:
+            threshold = min_score_by_type.get(item.source_type, 0)
+            if item.engagement_score >= threshold:
+                filtered.append(item)
+
+        logger.info(f"Engagement filter: {len(filtered)}/{len(items)} items passed")
+        return filtered
+
+    def generate_mixed_content_digest(
+        self,
+        papers: list[ContentItem],
+        blogs: list[ContentItem],
+        tweets: list[ContentItem],
+        videos: list[ContentItem],
+    ) -> str:
+        """
+        Generate a comprehensive daily digest from mixed content sources.
+
+        Args:
+            papers: ArXiv papers
+            blogs: Blog posts
+            tweets: Twitter content
+            videos: YouTube videos
+
+        Returns:
+            Formatted digest string
+        """
+        sections = []
+
+        # Papers section
+        if papers:
+            paper_titles = [p.title[:50] for p in papers[:3]]
+            sections.append(f"📄 论文: {', '.join(paper_titles)}")
+
+        # Blogs section
+        if blogs:
+            blog_titles = [b.title[:40] for b in blogs[:2]]
+            sections.append(f"📝 博客: {', '.join(blog_titles)}")
+
+        # Twitter section
+        if tweets:
+            top_tweet = tweets[0]
+            sections.append(f"🐦 Twitter: @{top_tweet.source} 分享热门内容")
+
+        # YouTube section
+        if videos:
+            top_video = videos[0]
+            sections.append(f"📺 视频: {top_video.title[:40]}...")
+
+        if not sections:
+            return "今日 AI 领域稳步发展。"
+
+        context = "\n".join(sections)
+
+        history = [
+            {
+                "role": "system",
+                "content": (
+                    "你是一位资深AI资讯编辑。基于以下多源内容生成今日洞察：\n"
+                    "- 概括主要趋势和热点\n"
+                    "- 提及重要论文、博客、社交媒体讨论\n"
+                    "- 语气自然专业，控制在200字以内"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"今日内容汇总：\n{context}\n\n生成洞察：",
+            },
+        ]
+
+        try:
+            digest = self._get_client()._call_openai(history)
+            return digest.strip() if digest else "今日 AI 领域持续活跃。"
+        except Exception as e:
+            logger.warning(f"Failed to generate mixed digest: {e}")
+            return "今日 AI 领域多元发展，值得关注。"
+
+    def llm_relevance_check(
+        self,
+        item: ContentItem,
+        topic: str = "AI/ML research and developments",
+    ) -> bool:
+        """
+        Use LLM to check if content is relevant to specified topic.
+        More accurate than keyword matching but costs tokens.
+
+        Args:
+            item: ContentItem to check
+            topic: Topic to check relevance against
+
+        Returns:
+            True if relevant, False otherwise
+        """
+        # Skip LLM check for certain sources (too expensive)
+        if item.source_type in ["twitter", "youtube"] and len(item.content) > 500:
+            # Use keyword fallback for long social content
+            return True
+
+        content = item.content or item.summary or item.title
+        if len(content) > 1000:
+            content = content[:1000] + "..."
+
+        history = [
+            {
+                "role": "system",
+                "content": (
+                    f"判断以下内容是否与 '{topic}' 相关。\n"
+                    "只回答 'YES' 或 'NO'，不要有其他内容。"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"标题: {item.title}\n\n内容: {content}\n\n相关吗？",
+            },
+        ]
+
+        try:
+            response = self._get_client()._call_openai(history)
+            is_relevant = response and "YES" in response.upper()
+            logger.debug(f"LLM relevance check for '{item.title[:30]}...': {is_relevant}")
+            return is_relevant
+        except Exception as e:
+            logger.warning(f"LLM relevance check failed: {e}")
+            # Default to keeping content if check fails
+            return True
