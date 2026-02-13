@@ -217,7 +217,18 @@ export default function Star() {
 
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm">
-                {error}
+                <div className="flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>{error}</span>
+                </div>
+                {error.includes("重新登录") && (
+                  <button
+                    onClick={() => navigate("/login")}
+                    className="mt-2 text-sm underline hover:text-red-800"
+                  >
+                    去登录页面
+                  </button>
+                )}
               </div>
             )}
 

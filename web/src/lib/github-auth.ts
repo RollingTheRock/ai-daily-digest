@@ -168,6 +168,35 @@ export function logout(): void {
 }
 
 /**
+ * 验证 Token 是否有效
+ */
+export async function validateToken(): Promise<boolean> {
+  const token = getToken();
+  if (!token) return false;
+
+  try {
+    const response = await fetch("https://api.github.com/user", {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+      },
+    });
+
+    if (response.status === 401) {
+      // Token 已过期，清理本地存储
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(USER_KEY);
+      return false;
+    }
+
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * 获取当前用户信息（带缓存）
  */
 export async function getCurrentUser(): Promise<GitHubUser | null> {
@@ -194,9 +223,15 @@ export async function getCurrentUser(): Promise<GitHubUser | null> {
 
   if (!response.ok) {
     if (response.status === 401) {
-      logout();
+      // Token 无效或过期
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(USER_KEY);
+      throw new Error("GitHub Token 已过期或无效，请重新登录");
     }
-    throw new Error(`Failed to get user: ${response.statusText}`);
+    if (response.status === 403) {
+      throw new Error("GitHub API 访问受限，请检查 Token 权限");
+    }
+    throw new Error(`获取用户信息失败: ${response.status} ${response.statusText}`);
   }
 
   const user: GitHubUser = await response.json();

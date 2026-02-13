@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { isLoggedIn, getCurrentUser, logout, type GitHubUser } from "../lib/github-auth";
-import { getStars, removeStar, getStats, getNotes, invalidateStarsCache, getNoteByContentId, type StarItem, type NoteItem } from "../lib/github-storage";
+import { getStars, removeStar, getNotes, invalidateStarsCache, getNoteByContentId, type StarItem, type NoteItem } from "../lib/github-storage";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ export default function Home() {
     // 页面重新获得焦点时刷新数据（从其他页面返回时）
     const handleFocus = () => {
       if (isLoggedIn()) {
-        loadData();
+        void loadData(false);
       }
     };
 
@@ -47,16 +47,38 @@ export default function Home() {
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       setError(null);
 
-      const [starsData, statsData, notesData] = await Promise.all([
-        getStars(),
-        getStats(),
-        getNotes()
-      ]);
+      // 分别获取数据，一个失败不影响其他
+      let starsData: StarItem[] = [];
+      let notesData: NoteItem[] = [];
+      let statsData = { total_stars: 0, total_notes: 0, pending_ai: 0 };
+      let errorMsg = "";
+
+      try {
+        starsData = await getStars();
+      } catch (err) {
+        console.error("Failed to load stars:", err);
+        errorMsg = err instanceof Error ? err.message : "加载收藏失败";
+      }
+
+      try {
+        notesData = await getNotes();
+      } catch (err) {
+        console.error("Failed to load notes:", err);
+        if (!errorMsg) errorMsg = err instanceof Error ? err.message : "加载笔记失败";
+      }
+
+      // 计算统计信息
+      statsData = {
+        total_stars: starsData.length,
+        total_notes: notesData.length,
+        pending_ai: notesData.filter((n) => !n.ai_enhanced).length,
+      };
+
       setStars(starsData);
       setStats(statsData);
 
@@ -64,6 +86,14 @@ export default function Home() {
       const starIds = new Set(starsData.map(s => s.id));
       const orphanNotesData = notesData.filter(n => !starIds.has(n.content_id));
       setOrphanNotes(orphanNotesData);
+
+      // 如果有错误但仍然有数据，显示警告而不是错误
+      if (errorMsg && starsData.length === 0 && notesData.length === 0) {
+        setError(errorMsg);
+      } else if (errorMsg) {
+        // 部分数据加载成功，显示警告
+        console.warn("Partial data loaded:", errorMsg);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "加载数据失败");
     } finally {
@@ -210,7 +240,7 @@ export default function Home() {
           )}
           </div>
           <button
-            onClick={loadData}
+            onClick={() => { void loadData(); }}
             disabled={loading}
             className="text-sm text-notion-muted hover:text-notion-text px-2 py-1 rounded"
             title="刷新"
@@ -220,7 +250,7 @@ export default function Home() {
           <button
             onClick={() => {
               invalidateStarsCache();
-              loadData();
+              void loadData();
             }}
             disabled={loading}
             className="text-sm text-notion-muted hover:text-notion-text px-2 py-1 rounded ml-2"
@@ -257,7 +287,15 @@ export default function Home() {
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-4">
-          {error}
+          <div className="flex items-center justify-between">
+            <span>{error}</span>
+            <button
+              onClick={() => { void loadData(); }}
+              className="ml-4 px-3 py-1 bg-red-100 hover:bg-red-200 rounded text-sm"
+            >
+              重试
+            </button>
+          </div>
         </div>
       )}
 

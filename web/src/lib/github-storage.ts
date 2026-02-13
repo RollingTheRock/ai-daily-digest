@@ -171,10 +171,22 @@ async function createOrUpdateFile(
     body: JSON.stringify(body),
   });
 
+  if (response.status === 401) {
+    throw new Error("GitHub 认证已过期，请重新登录");
+  }
+
+  if (response.status === 403) {
+    throw new Error("没有权限写入仓库，请检查 Token 是否有 repo 权限");
+  }
+
+  if (response.status === 409) {
+    throw new Error("文件冲突，请刷新页面后重试");
+  }
+
   if (!response.ok) {
     const error = await response.text();
     console.error(`[createOrUpdateFile] Failed: ${response.status} ${error}`);
-    throw new Error(`Failed to save file: ${error}`);
+    throw new Error(`保存失败: ${response.status} ${error}`);
   }
 
   console.log(`[createOrUpdateFile] Success: ${response.status}`);
@@ -192,8 +204,21 @@ async function readFile(repo: string, path: string): Promise<string | null> {
     return null;
   }
 
+  if (response.status === 401) {
+    throw new Error("GitHub 认证已过期，请重新登录");
+  }
+
+  if (response.status === 403) {
+    const rateLimitRemaining = response.headers.get("X-RateLimit-Remaining");
+    if (rateLimitRemaining === "0") {
+      throw new Error("GitHub API 速率限制已达上限，请稍后再试");
+    }
+    throw new Error("没有权限访问该仓库，请检查 Token 是否有 repo 权限");
+  }
+
   if (!response.ok) {
-    throw new Error(`Failed to read file: ${response.statusText}`);
+    const errorText = await response.text().catch(() => response.statusText);
+    throw new Error(`读取文件失败: ${response.status} ${errorText}`);
   }
 
   const data = await response.json();
@@ -294,7 +319,7 @@ export function invalidateNotesCache(): void {
 // ==================== Stars API ====================
 
 /**
- * 获取所有收藏（优先从缓存读取）
+ * 获取所有收藏（优先从缓存读取，支持优雅降级）
  */
 export async function getStars(): Promise<StarItem[]> {
   // 先尝试从缓存读取
@@ -303,24 +328,34 @@ export async function getStars(): Promise<StarItem[]> {
     console.log("[getStars] Returning cached data:", cached.length, "items");
   }
 
-  await ensureDataRepo();
-  const repo = await getRepoFullName();
-
-  const content = await readFile(repo, "data/stars.json");
-  if (!content) {
-    console.log("[getStars] No content from server");
-    return cached || [];
-  }
-
   try {
-    const stars = JSON.parse(content) as StarItem[];
-    console.log("[getStars] From server:", stars.length, "items");
-    // 更新缓存
-    setCachedStars(stars);
-    return stars;
-  } catch (e) {
-    console.error("[getStars] Parse error:", e);
-    return cached || [];
+    await ensureDataRepo();
+    const repo = await getRepoFullName();
+
+    const content = await readFile(repo, "data/stars.json");
+    if (!content) {
+      console.log("[getStars] No content from server");
+      return cached || [];
+    }
+
+    try {
+      const stars = JSON.parse(content) as StarItem[];
+      console.log("[getStars] From server:", stars.length, "items");
+      // 更新缓存
+      setCachedStars(stars);
+      return stars;
+    } catch (e) {
+      console.error("[getStars] Parse error:", e);
+      return cached || [];
+    }
+  } catch (error) {
+    // 认证错误或其他错误时，返回缓存数据
+    console.error("[getStars] Error fetching from server:", error);
+    if (cached) {
+      console.log("[getStars] Returning cached data due to error");
+      return cached;
+    }
+    throw error;
   }
 }
 
@@ -409,7 +444,7 @@ export async function updateStarTags(id: string, tags: string[]): Promise<void> 
 // ==================== Notes API ====================
 
 /**
- * 获取所有笔记（优先从缓存读取）
+ * 获取所有笔记（优先从缓存读取，支持优雅降级）
  */
 export async function getNotes(): Promise<NoteItem[]> {
   // 先尝试从缓存读取
@@ -418,24 +453,34 @@ export async function getNotes(): Promise<NoteItem[]> {
     console.log("[getNotes] Returning cached data:", cached.length, "items");
   }
 
-  await ensureDataRepo();
-  const repo = await getRepoFullName();
-
-  const content = await readFile(repo, "data/notes.json");
-  if (!content) {
-    console.log("[getNotes] No content from server");
-    return cached || [];
-  }
-
   try {
-    const notes = JSON.parse(content) as NoteItem[];
-    console.log("[getNotes] From server:", notes.length, "items");
-    // 更新缓存
-    setCachedNotes(notes);
-    return notes;
-  } catch (e) {
-    console.error("[getNotes] Parse error:", e);
-    return cached || [];
+    await ensureDataRepo();
+    const repo = await getRepoFullName();
+
+    const content = await readFile(repo, "data/notes.json");
+    if (!content) {
+      console.log("[getNotes] No content from server");
+      return cached || [];
+    }
+
+    try {
+      const notes = JSON.parse(content) as NoteItem[];
+      console.log("[getNotes] From server:", notes.length, "items");
+      // 更新缓存
+      setCachedNotes(notes);
+      return notes;
+    } catch (e) {
+      console.error("[getNotes] Parse error:", e);
+      return cached || [];
+    }
+  } catch (error) {
+    // 认证错误或其他错误时，返回缓存数据
+    console.error("[getNotes] Error fetching from server:", error);
+    if (cached) {
+      console.log("[getNotes] Returning cached data due to error");
+      return cached;
+    }
+    throw error;
   }
 }
 
