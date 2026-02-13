@@ -11,6 +11,7 @@ from sendgrid.helpers.mail import Mail
 from arxiv_sanity_bot.logger import get_logger
 from arxiv_sanity_bot.config import TIMEZONE
 from arxiv_sanity_bot.sources import GitHubRepo, HFModel, BlogPost
+from arxiv_sanity_bot.schemas import ContentItem
 from arxiv_sanity_bot.signature import generate_signature
 
 logger = get_logger(__name__)
@@ -31,6 +32,8 @@ class EmailSender:
         from_email: str,
         subject: str | None = None,
         daily_insight: str = "",
+        tweets: list[ContentItem] | None = None,
+        videos: list[ContentItem] | None = None,
     ) -> bool:
         """
         Send a daily digest email.
@@ -46,6 +49,8 @@ class EmailSender:
             from_email: Sender email address
             subject: Email subject (optional)
             daily_insight: Daily insight summary from LLM (optional)
+            tweets: List of Twitter content items (optional)
+            videos: List of YouTube content items (optional)
 
         Returns:
             True if sent successfully, False otherwise
@@ -83,6 +88,8 @@ class SendGridEmailSender(EmailSender):
         from_email: str,
         subject: str | None = None,
         daily_insight: str = "",
+        tweets: list[ContentItem] | None = None,
+        videos: list[ContentItem] | None = None,
     ) -> bool:
         """
         Send a daily digest email via SendGrid.
@@ -97,7 +104,9 @@ class SendGridEmailSender(EmailSender):
             to_email: Recipient email address
             from_email: Sender email address
             subject: Email subject (optional)
-            daily_insight: Daily insight summary from LLM (unused in SendGrid)
+            daily_insight: Daily insight summary from LLM
+            tweets: List of Twitter content items (optional)
+            videos: List of YouTube content items (optional)
 
         Returns:
             True if sent successfully, False otherwise
@@ -106,6 +115,7 @@ class SendGridEmailSender(EmailSender):
             today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
             subject = f"🤖 AI Daily Digest - {today}"
 
+        # SendGrid uses simplified template (Twitter/YouTube not yet supported)
         html_content = self._build_html_email(
             github_repos=github_repos,
             hf_models=hf_models,
