@@ -12,6 +12,8 @@ from arxiv_sanity_bot.config import TIMEZONE
 from arxiv_sanity_bot.sources import GitHubRepo, HFModel, BlogPost
 from arxiv_sanity_bot.email.email_sender import EmailSender
 from arxiv_sanity_bot.schemas import ContentItem
+from arxiv_sanity_bot.signature import generate_signature
+from urllib.parse import quote
 
 logger = get_logger(__name__)
 
@@ -392,6 +394,34 @@ class SmtpEmailSender(EmailSender):
             border-top: 1px solid rgba(0,0,0,0.05);
         }}
 
+        /* Action Buttons */
+        .card-actions {{
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+            display: flex;
+            gap: 8px;
+        }}
+        .btn {{
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+        }}
+        .btn-star {{
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+        }}
+        .btn-note {{
+            background: #e0f2fe;
+            color: #0369a1;
+            border: 1px solid #7dd3fc;
+        }}
+
         /* Empty State */
         .empty-state {{
             color: #9b9b9b;
@@ -498,9 +528,13 @@ class SmtpEmailSender(EmailSender):
             <h2 class="section-title">&#128293; 热门项目</h2>
 """
 
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
+
         # GitHub repos
         for repo in repos:
             stars = f"&#11088; {repo.stars_total:,} stars" if repo.stars_total else ""
+            content_id = f"github-{repo.name.replace('/', '-')}"
+            buttons = self._build_action_buttons(content_id, repo.name, repo.url, "github", today)
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -509,12 +543,15 @@ class SmtpEmailSender(EmailSender):
                 </div>
                 <h3 class="card-title"><a href="{repo.url}">{repo.name}</a></h3>
                 <p class="card-desc">{self._escape_html(repo.description or "")}</p>
+                {buttons}
             </div>
 """
 
         # HuggingFace models
         for model in models:
             downloads = f"&#128229; {model.downloads:,}" if model.downloads else ""
+            content_id = f"hf-model-{model.name.replace('/', '-')}"
+            buttons = self._build_action_buttons(content_id, model.name, model.url, "huggingface", today)
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -523,12 +560,15 @@ class SmtpEmailSender(EmailSender):
                 </div>
                 <h3 class="card-title"><a href="{model.url}">{model.name}</a></h3>
                 <p class="card-desc">{self._escape_html(model.description or "")}</p>
+                {buttons}
             </div>
 """
 
         # HuggingFace datasets
         for dataset in datasets:
             downloads = f"&#128229; {dataset.downloads:,}" if dataset.downloads else ""
+            content_id = f"hf-dataset-{dataset.name.replace('/', '-')}"
+            buttons = self._build_action_buttons(content_id, dataset.name, dataset.url, "huggingface", today)
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -537,12 +577,15 @@ class SmtpEmailSender(EmailSender):
                 </div>
                 <h3 class="card-title"><a href="{dataset.url}">{dataset.name}</a></h3>
                 <p class="card-desc">{self._escape_html(dataset.description or "")}</p>
+                {buttons}
             </div>
 """
 
         # HuggingFace spaces
         for space in spaces:
             likes = f"&#10084; {space.likes:,}" if space.likes else ""
+            content_id = f"hf-space-{space.name.replace('/', '-')}"
+            buttons = self._build_action_buttons(content_id, space.name, space.url, "huggingface", today)
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -551,6 +594,7 @@ class SmtpEmailSender(EmailSender):
                 </div>
                 <h3 class="card-title"><a href="{space.url}">{space.name}</a></h3>
                 <p class="card-desc">{self._escape_html(space.description or "")}</p>
+                {buttons}
             </div>
 """
 
@@ -578,9 +622,9 @@ class SmtpEmailSender(EmailSender):
             arxiv_id = paper.get("arxiv", "")
             summary = paper.get("summary", "")
             url = paper.get("url", f"https://arxiv.org/abs/{arxiv_id}")
-
             summary_html = f'<p class="card-summary">{self._escape_html(summary)}</p>' if summary else ""
-
+            content_id = f"arxiv-{arxiv_id}"
+            buttons = self._build_action_buttons(content_id, title, url, "arxiv", today)
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -589,12 +633,15 @@ class SmtpEmailSender(EmailSender):
                 </div>
                 <h3 class="card-title"><a href="{url}">{self._escape_html(title)}</a></h3>
                 {summary_html}
+                {buttons}
             </div>
 """
 
         # Blog posts
         for post in posts:
-            date_str = post.published_on.strftime("%m月%d日")
+            date_str = post.published_on.strftime("%m/%d")
+            content_id = f"blog-{post.source.lower().replace(' ', '-')}-{post.title[:30].lower().replace(' ', '-')}"
+            buttons = self._build_action_buttons(content_id, post.title, post.url, "blog", today)
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -603,6 +650,7 @@ class SmtpEmailSender(EmailSender):
                 </div>
                 <h3 class="card-title"><a href="{post.url}">{self._escape_html(post.title)}</a></h3>
                 <p class="card-desc">{self._escape_html(post.summary or "")}</p>
+                {buttons}
             </div>
 """
 
@@ -678,14 +726,21 @@ class SmtpEmailSender(EmailSender):
         html += "</div>"
         return html
 
+    def _build_action_buttons(self, content_id: str, title: str, url: str, content_type: str, date: str) -> str:
+        base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
+        if not base_url:
+            return ""
+        try:
+            signature = generate_signature(content_id, date)
+            star_url = f"{base_url}/star?id={quote(content_id)}&title={quote(title)}&url={quote(url)}&type={content_type}&date={date}&t={signature}"
+            note_url = f"{base_url}/note?id={quote(content_id)}&title={quote(title)}&url={quote(url)}&type={content_type}&date={date}&t={signature}"
+            return f'<div class="card-actions"><a href="{star_url}" class="btn btn-star" target="_blank">Star</a><a href="{note_url}" class="btn btn-note" target="_blank">Note</a></div>'
+        except Exception as e:
+            logger.warning(f"Failed to generate action buttons: {e}")
+            return ""
+
     @staticmethod
     def _escape_html(text: str) -> str:
-        """Escape HTML special characters."""
         if not text:
             return ""
-        return (
-            text.replace("&", "&amp;")
-            .replace("<", "&lt;")
-            .replace(">", "&gt;")
-            .replace('"', "&quot;")
-        )
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
