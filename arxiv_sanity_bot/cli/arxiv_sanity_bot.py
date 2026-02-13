@@ -346,8 +346,23 @@ def daily_digest(
         arxiv_papers = processor.batch_summarize_papers(arxiv_papers)
 
     logger.info("Generating daily insight...")
+    # Convert arxiv_papers dicts to ContentItems for mixed digest
+    from arxiv_sanity_bot.schemas import ContentItem
+    arxiv_items: list[ContentItem] = []
+    for paper in arxiv_papers:
+        arxiv_items.append(ContentItem(
+            id=paper.get("arxiv", ""),
+            title=paper.get("title", ""),
+            source="arXiv",
+            source_type="arxiv",
+            url=paper.get("url", ""),
+            published_on=paper.get("published_on", datetime.now(tz=TIMEZONE)),
+            author="",
+            summary=paper.get("summary", ""),
+            content=paper.get("abstract", ""),
+        ))
     daily_insight = processor.generate_mixed_content_digest(
-        arxiv_papers, blog_posts, tweets, videos
+        arxiv_items, blog_posts, tweets, videos
     )
     logger.info(f"Daily insight: {daily_insight[:100]}...")
 
