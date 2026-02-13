@@ -310,7 +310,7 @@ class ContentProcessor:
 
         try:
             response = self._get_client()._call_openai(history)
-            is_relevant = response and "YES" in response.upper()
+            is_relevant = bool(response and "YES" in response.upper())
             logger.debug(f"LLM relevance check for '{item.title[:30]}...': {is_relevant}")
             return is_relevant
         except Exception as e:
