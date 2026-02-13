@@ -414,6 +414,8 @@ def daily_digest(
         to_email=to_email,
         from_email=from_email,
         daily_insight=daily_insight,
+        tweets=tweets,
+        videos=videos,
     )
 
     if success:

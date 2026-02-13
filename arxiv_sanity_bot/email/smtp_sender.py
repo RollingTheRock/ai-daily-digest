@@ -6,13 +6,12 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Any
-from urllib.parse import quote
 
 from arxiv_sanity_bot.logger import get_logger
 from arxiv_sanity_bot.config import TIMEZONE
 from arxiv_sanity_bot.sources import GitHubRepo, HFModel, BlogPost
 from arxiv_sanity_bot.email.email_sender import EmailSender
-from arxiv_sanity_bot.signature import generate_signature
+from arxiv_sanity_bot.schemas import ContentItem
 
 logger = get_logger(__name__)
 
@@ -62,6 +61,8 @@ class SmtpEmailSender(EmailSender):
         from_email: str,
         subject: str | None = None,
         daily_insight: str = "",
+        tweets: list[ContentItem] | None = None,
+        videos: list[ContentItem] | None = None,
     ) -> bool:
         """
         Send a daily digest email via SMTP.
@@ -77,6 +78,8 @@ class SmtpEmailSender(EmailSender):
             from_email: Sender email address
             subject: Email subject (optional)
             daily_insight: Daily insight summary from LLM
+            tweets: List of Twitter content items (optional)
+            videos: List of YouTube content items (optional)
 
         Returns:
             True if sent successfully, False otherwise
@@ -103,6 +106,8 @@ class SmtpEmailSender(EmailSender):
             arxiv_papers=arxiv_papers,
             blog_posts=blog_posts,
             daily_insight=daily_insight,
+            tweets=tweets or [],
+            videos=videos or [],
         )
 
         try:
@@ -148,6 +153,8 @@ class SmtpEmailSender(EmailSender):
         arxiv_papers: list[dict[str, Any]],
         blog_posts: list[BlogPost],
         daily_insight: str = "",
+        tweets: list[ContentItem] = [],
+        videos: list[ContentItem] = [],
     ) -> str:
         """Build HTML email content with Notion-inspired design."""
         today = datetime.now(tz=TIMEZONE).strftime("%m月%d日")
@@ -169,8 +176,6 @@ class SmtpEmailSender(EmailSender):
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 晨报</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-
         * {{
             margin: 0;
             padding: 0;
@@ -179,248 +184,257 @@ class SmtpEmailSender(EmailSender):
 
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background: #f7f6f3;
+            background: #ffffff;
             color: #37352f;
             line-height: 1.6;
             -webkit-font-smoothing: antialiased;
         }}
 
         .container {{
-            max-width: 640px;
+            max-width: 720px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 48px 24px;
         }}
 
+        /* Header */
         .header {{
             text-align: center;
-            margin-bottom: 32px;
-            padding: 0 20px;
+            margin-bottom: 40px;
         }}
 
         .header-icon {{
-            font-size: 32px;
-            margin-bottom: 12px;
-            opacity: 0.8;
+            font-size: 36px;
+            margin-bottom: 16px;
         }}
 
         .header h1 {{
-            font-size: 26px;
+            font-size: 28px;
             font-weight: 600;
             color: #37352f;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             letter-spacing: -0.5px;
+        }}
+
+        .header .subtitle {{
+            font-size: 15px;
+            color: #6b6b6b;
+            font-weight: 400;
+            margin-bottom: 4px;
         }}
 
         .header .date {{
             font-size: 14px;
-            color: #6b6b6b;
-            font-weight: 400;
+            color: #9b9b9b;
         }}
 
+        /* Insight Box */
         .insight-box {{
-            background: #ffffff;
-            border-radius: 8px;
-            padding: 20px 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.02);
-            border: 1px solid #e9e9e7;
+            background: #f7f7f5;
+            border-radius: 6px;
+            padding: 24px;
+            margin-bottom: 40px;
         }}
 
         .insight-label {{
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #9ca3af;
-            margin-bottom: 8px;
-            font-weight: 500;
+            font-size: 12px;
+            font-weight: 600;
+            color: #2383e2;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }}
 
         .insight-text {{
             font-size: 15px;
-            color: #4b5563;
+            color: #37352f;
             line-height: 1.7;
         }}
 
+        /* Section */
         .section {{
-            margin-bottom: 28px;
-        }}
-
-        .section-header {{
-            display: flex;
-            align-items: center;
-            margin-bottom: 16px;
-            padding: 0 4px;
-        }}
-
-        .section-icon {{
-            width: 22px;
-            height: 22px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f4f4f4;
-            border-radius: 5px;
-            margin-right: 10px;
-            font-size: 12px;
+            margin-bottom: 40px;
         }}
 
         .section-title {{
-            font-size: 14px;
+            font-size: 20px;
             font-weight: 600;
-            color: #6b6b6b;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }}
-
-        .card {{
-            background: #ffffff;
-            border-radius: 8px;
-            padding: 16px 20px;
-            margin-bottom: 8px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-            border: 1px solid #e9e9e7;
-            transition: all 0.15s ease;
-        }}
-
-        .card:hover {{
-            box-shadow: 0 2px 4px rgba(0,0,0,0.06);
-            transform: translateY(-1px);
-        }}
-
-        .card-title {{
-            font-size: 15px;
-            font-weight: 500;
-            margin-bottom: 6px;
             color: #37352f;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }}
+
+        /* Content Card - Notion Style */
+        .content-card {{
+            background: #f7f7f5;
+            border-radius: 6px;
+            padding: 20px 24px;
+            margin-bottom: 12px;
+            transition: background 0.15s ease;
+        }}
+
+        .content-card:hover {{
+            background: #f0f0ee;
+        }}
+
+        .card-header {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }}
+
+        /* Source Tags */
+        .source-tag {{
+            font-size: 12px;
+            font-weight: 500;
+            padding: 3px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }}
+
+        .source-tag.github {{
+            color: #2383e2;
+            background: rgba(35, 131, 226, 0.1);
+        }}
+
+        .source-tag.hf {{
+            color: #ff6b00;
+            background: rgba(255, 107, 0, 0.1);
+        }}
+
+        .source-tag.arxiv {{
+            color: #b31b1b;
+            background: rgba(179, 27, 27, 0.08);
+        }}
+
+        .source-tag.blog {{
+            color: #f97316;
+            background: rgba(249, 115, 22, 0.1);
+        }}
+
+        .source-tag.twitter {{
+            color: #1da1f2;
+            background: rgba(29, 161, 242, 0.1);
+        }}
+
+        .source-tag.youtube {{
+            color: #ff0000;
+            background: rgba(255, 0, 0, 0.08);
+        }}
+
+        /* Card Title - Clickable */
+        .card-title {{
+            font-size: 17px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            line-height: 1.4;
         }}
 
         .card-title a {{
             color: #37352f;
             text-decoration: none;
-            border-bottom: 1px solid #e9e9e7;
-            transition: border-color 0.15s;
+            transition: color 0.15s ease;
         }}
 
         .card-title a:hover {{
-            border-color: #37352f;
+            color: #2383e2;
+            text-decoration: underline;
         }}
 
-        .card-description {{
-            font-size: 13px;
-            color: #6b6b6b;
-            line-height: 1.6;
-            margin-bottom: 10px;
-        }}
-
+        /* Card Content */
+        .card-desc,
         .card-summary {{
-            font-size: 13px;
-            color: #4b5563;
-            line-height: 1.6;
-            padding: 10px 12px;
-            background: #f9f9f8;
-            border-radius: 6px;
-            margin-top: 10px;
-            border-left: 3px solid #d1d5db;
-        }}
-
-        .card-meta {{
-            font-size: 12px;
-            color: #9ca3af;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }}
-
-        .tag {{
-            display: inline-flex;
-            align-items: center;
-            padding: 2px 8px;
-            background: #f4f4f4;
-            border-radius: 4px;
-            font-size: 11px;
+            font-size: 15px;
             color: #6b6b6b;
-            font-weight: 500;
+            margin: 0 0 8px 0;
+            line-height: 1.6;
         }}
 
-        .card-actions {{
+        .card-content {{
+            font-size: 15px;
+            color: #37352f;
+            margin: 0 0 8px 0;
+            line-height: 1.6;
+        }}
+
+        .card-content a {{
+            color: #2383e2;
+            text-decoration: none;
+        }}
+
+        .card-content a:hover {{
+            text-decoration: underline;
+        }}
+
+        /* Meta Info */
+        .card-meta,
+        .meta,
+        .engagement {{
+            font-size: 13px;
+            color: #9b9b9b;
+        }}
+
+        .author {{
+            font-size: 13px;
+            color: #6b6b6b;
+        }}
+
+        /* Card Footer */
+        .card-footer {{
             margin-top: 12px;
             padding-top: 12px;
-            border-top: 1px solid #f0f0f0;
-            display: flex;
-            gap: 8px;
+            border-top: 1px solid rgba(0,0,0,0.05);
         }}
 
-        .btn {{
-            display: inline-flex;
-            align-items: center;
-            padding: 6px 12px;
+        /* Empty State */
+        .empty-state {{
+            color: #9b9b9b;
+            font-style: italic;
+            padding: 24px;
+            text-align: center;
+            font-size: 14px;
+            background: #f7f7f5;
             border-radius: 6px;
-            font-size: 12px;
-            font-weight: 500;
-            text-decoration: none;
-            transition: all 0.15s ease;
         }}
 
-        .btn-star {{
-            background: #fef3c7;
-            color: #92400e;
-            border: 1px solid #fcd34d;
-        }}
-
-        .btn-star:hover {{
-            background: #fde68a;
-        }}
-
-        .btn-note {{
-            background: #e0e7ff;
-            color: #3730a3;
-            border: 1px solid #c7d2fe;
-        }}
-
-        .btn-note:hover {{
-            background: #c7d2fe;
-        }}
-
-        .divider {{
-            height: 1px;
-            background: #e9e9e7;
-            margin: 24px 0;
-        }}
-
+        /* Footer */
         .footer {{
             text-align: center;
-            padding: 24px;
-            color: #9ca3af;
-            font-size: 12px;
+            padding: 32px 24px;
+            color: #9b9b9b;
+            font-size: 13px;
+            border-top: 1px solid #f0f0f0;
+            margin-top: 16px;
         }}
 
         .footer p {{
             margin: 4px 0;
         }}
 
-        .empty-state {{
-            color: #9ca3af;
-            font-style: italic;
-            padding: 16px 20px;
-            text-align: center;
-            font-size: 13px;
-            background: #ffffff;
-            border-radius: 8px;
-            border: 1px solid #e9e9e7;
-        }}
-
+        /* Mobile */
         @media (max-width: 480px) {{
             .container {{
-                padding: 20px 16px;
+                padding: 24px 16px;
             }}
 
-            .card {{
-                padding: 14px 16px;
+            .content-card {{
+                padding: 16px 20px;
             }}
 
             .header h1 {{
-                font-size: 22px;
+                font-size: 24px;
+            }}
+
+            .section-title {{
+                font-size: 18px;
+            }}
+
+            .card-title {{
+                font-size: 16px;
             }}
         }}
     </style>
@@ -428,8 +442,9 @@ class SmtpEmailSender(EmailSender):
 <body>
     <div class="container">
         <div class="header">
-            <div class="header-icon">&#127774;</div>
+            <div class="header-icon">&#129302;</div>
             <h1>AI 晨报</h1>
+            <div class="subtitle">每日 AI 要点，5 分钟速览</div>
             <div class="date">{today} · {weekday_cn}</div>
         </div>
 """
@@ -438,29 +453,24 @@ class SmtpEmailSender(EmailSender):
         if daily_insight:
             html += f"""
         <div class="insight-box">
-            <div class="insight-label">今日洞察</div>
+            <div class="insight-label">&#128204; 今日洞察</div>
             <div class="insight-text">{self._escape_html(daily_insight)}</div>
         </div>
 """
 
-        # GitHub Section
-        html += self._build_github_section(github_repos)
+        # Trending Section (GitHub + HuggingFace)
+        html += self._build_trending_section(github_repos, hf_models, hf_datasets, hf_spaces)
 
-        # HuggingFace Section
-        html += self._build_huggingface_section(hf_models, hf_datasets, hf_spaces)
+        # Reading Section (arXiv + Blog)
+        html += self._build_reading_section(arxiv_papers, blog_posts)
 
-        # arXiv Section
-        html += self._build_arxiv_section(arxiv_papers)
-
-        # Blog Section
-        html += self._build_blog_section(blog_posts)
+        # Social Section (Twitter + YouTube)
+        html += self._build_social_section(tweets, videos)
 
         html += """
-        <div class="divider"></div>
-
         <div class="footer">
             <p>AI 晨报 · 为你精选每日 AI 资讯</p>
-            <p>由 arxiv-sanity-bot 自动发送</p>
+            <p>由 arxiv-sanity-bot 自动生成</p>
         </div>
     </div>
 </body>
@@ -469,256 +479,197 @@ class SmtpEmailSender(EmailSender):
 
         return html
 
-    def _build_action_buttons(
+    def _build_trending_section(
         self,
-        content_id: str,
-        title: str,
-        url: str,
-        content_type: str,
-        date: str,
+        repos: list[GitHubRepo],
+        models: list[HFModel],
+        datasets: list[HFModel],
+        spaces: list[HFModel],
     ) -> str:
-        """Build action buttons (star/note) for a content card."""
-        base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
-        if not base_url:
-            return ""  # No web URL configured, skip buttons
-
-        try:
-            signature = generate_signature(content_id, date)
-
-            star_url = f"{base_url}/star?id={quote(content_id, safe='')}&title={quote(title, safe='')}&url={quote(url, safe='')}&type={content_type}&date={date}&t={signature}"
-            note_url = f"{base_url}/note?id={quote(content_id, safe='')}&title={quote(title, safe='')}&url={quote(url, safe='')}&type={content_type}&date={date}&t={signature}"
-
-            return f"""
-                <div class="card-actions">
-                    <a href="{star_url}" class="btn btn-star" target="_blank">&#9733; 收藏</a>
-                    <a href="{note_url}" class="btn btn-note" target="_blank">&#9998; 笔记</a>
-                </div>
-"""
-        except Exception as e:
-            logger.warning(f"Failed to generate action buttons: {e}")
-            return ""
-
-    def _build_github_section(self, repos: list[GitHubRepo]) -> str:
-        """Build GitHub trending section."""
-        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
-        html = """
-        <div class="section">
-            <div class="section-header">
-                <div class="section-icon">&#9733;</div>
-                <div class="section-title">GitHub 热门</div>
-            </div>
-"""
-
-        if not repos:
-            html += '<div class="empty-state">今日暂无热门仓库</div>'
-        else:
-            for repo in repos:
-                stars = f"{repo.stars_total:,} stars" if repo.stars_total else ""
-                lang = (
-                    f'<span class="tag">{repo.language}</span>' if repo.language else ""
-                )
-                content_id = f"github-{repo.name.replace('/', '-')}"
-                action_buttons = self._build_action_buttons(
-                    content_id=content_id,
-                    title=repo.name,
-                    url=repo.url,
-                    content_type="github",
-                    date=today,
-                )
-
-                html += f"""
-            <div class="card">
-                <div class="card-title"><a href="{repo.url}">{repo.name}</a></div>
-                <div class="card-description">{self._escape_html(repo.description)}</div>
-                <div class="card-meta">
-                    {f'<span>{stars}</span>' if stars else ""}
-                    {lang}
-                </div>
-                {action_buttons}
-            </div>
-"""
-
-        html += "</div>"
-        return html
-
-    def _build_huggingface_section(
-        self, models: list[HFModel], datasets: list[HFModel], spaces: list[HFModel]
-    ) -> str:
-        """Build HuggingFace trending section."""
-        has_content = models or datasets or spaces
+        """Build trending section with GitHub and HuggingFace content."""
+        has_content = repos or models or datasets or spaces
         if not has_content:
             return ""
 
-        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
         html = """
         <div class="section">
-            <div class="section-header">
-                <div class="section-icon">&#10084;</div>
-                <div class="section-title">HuggingFace 趋势</div>
+            <h2 class="section-title">&#128293; 热门项目</h2>
+"""
+
+        # GitHub repos
+        for repo in repos:
+            stars = f"&#11088; {repo.stars_total:,} stars" if repo.stars_total else ""
+            html += f"""
+            <div class="content-card">
+                <div class="card-header">
+                    <span class="source-tag github">GitHub</span>
+                    <span class="meta">{stars}</span>
+                </div>
+                <h3 class="card-title"><a href="{repo.url}">{repo.name}</a></h3>
+                <p class="card-desc">{self._escape_html(repo.description or "")}</p>
             </div>
 """
 
-        # Models
-        if models:
-            html += '<div style="margin-bottom: 12px;"><span class="tag" style="margin-bottom: 8px; display: inline-block;">模型</span></div>'
-            for model in models:
-                tags = "".join(f'<span class="tag">{t}</span>' for t in model.tags[:2])
-                content_id = f"hf-model-{model.name.replace('/', '-')}"
-                action_buttons = self._build_action_buttons(
-                    content_id=content_id,
-                    title=model.name,
-                    url=model.url,
-                    content_type="huggingface",
-                    date=today,
-                )
-                html += f"""
-            <div class="card">
-                <div class="card-title"><a href="{model.url}">{model.name}</a></div>
-                <div class="card-description">{self._escape_html(model.description)}</div>
-                <div class="card-meta">
-                    <span>下载: {model.downloads:,}</span>
-                    <span>喜欢: {model.likes:,}</span>
-                    {tags}
+        # HuggingFace models
+        for model in models:
+            downloads = f"&#128229; {model.downloads:,}" if model.downloads else ""
+            html += f"""
+            <div class="content-card">
+                <div class="card-header">
+                    <span class="source-tag hf">&#129303; HuggingFace</span>
+                    <span class="meta">{downloads}</span>
                 </div>
-                {action_buttons}
+                <h3 class="card-title"><a href="{model.url}">{model.name}</a></h3>
+                <p class="card-desc">{self._escape_html(model.description or "")}</p>
             </div>
 """
 
-        # Datasets
-        if datasets:
-            html += '<div style="margin: 16px 0 12px;"><span class="tag" style="margin-bottom: 8px; display: inline-block;">数据集</span></div>'
-            for dataset in datasets:
-                content_id = f"hf-dataset-{dataset.name.replace('/', '-')}"
-                action_buttons = self._build_action_buttons(
-                    content_id=content_id,
-                    title=dataset.name,
-                    url=dataset.url,
-                    content_type="huggingface",
-                    date=today,
-                )
-                html += f"""
-            <div class="card">
-                <div class="card-title"><a href="{dataset.url}">{dataset.name}</a></div>
-                <div class="card-description">{self._escape_html(dataset.description)}</div>
-                <div class="card-meta">
-                    <span>下载: {dataset.downloads:,}</span>
-                    <span>喜欢: {dataset.likes:,}</span>
+        # HuggingFace datasets
+        for dataset in datasets:
+            downloads = f"&#128229; {dataset.downloads:,}" if dataset.downloads else ""
+            html += f"""
+            <div class="content-card">
+                <div class="card-header">
+                    <span class="source-tag hf">&#129303; Dataset</span>
+                    <span class="meta">{downloads}</span>
                 </div>
-                {action_buttons}
+                <h3 class="card-title"><a href="{dataset.url}">{dataset.name}</a></h3>
+                <p class="card-desc">{self._escape_html(dataset.description or "")}</p>
             </div>
 """
 
-        # Spaces
-        if spaces:
-            html += '<div style="margin: 16px 0 12px;"><span class="tag" style="margin-bottom: 8px; display: inline-block;">Spaces</span></div>'
-            for space in spaces:
-                content_id = f"hf-space-{space.name.replace('/', '-')}"
-                action_buttons = self._build_action_buttons(
-                    content_id=content_id,
-                    title=space.name,
-                    url=space.url,
-                    content_type="huggingface",
-                    date=today,
-                )
-                html += f"""
-            <div class="card">
-                <div class="card-title"><a href="{space.url}">{space.name}</a></div>
-                <div class="card-description">{self._escape_html(space.description)}</div>
-                <div class="card-meta">
-                    <span>喜欢: {space.likes:,}</span>
+        # HuggingFace spaces
+        for space in spaces:
+            likes = f"&#10084; {space.likes:,}" if space.likes else ""
+            html += f"""
+            <div class="content-card">
+                <div class="card-header">
+                    <span class="source-tag hf">&#129303; Space</span>
+                    <span class="meta">{likes}</span>
                 </div>
-                {action_buttons}
+                <h3 class="card-title"><a href="{space.url}">{space.name}</a></h3>
+                <p class="card-desc">{self._escape_html(space.description or "")}</p>
             </div>
 """
 
         html += "</div>"
         return html
 
-    def _build_arxiv_section(self, papers: list[dict[str, Any]]) -> str:
-        """Build arXiv papers section."""
-        if not papers:
+    def _build_reading_section(
+        self,
+        papers: list[dict[str, Any]],
+        posts: list[BlogPost],
+    ) -> str:
+        """Build reading section with arXiv papers and blog posts."""
+        has_content = papers or posts
+        if not has_content:
             return ""
 
-        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
         html = """
         <div class="section">
-            <div class="section-header">
-                <div class="section-icon">&#8473;</div>
-                <div class="section-title">论文精选</div>
-            </div>
+            <h2 class="section-title">&#128221; 深度阅读</h2>
 """
 
+        # arXiv papers
         for paper in papers:
             title = paper.get("title", "未命名")
             arxiv_id = paper.get("arxiv", "")
             summary = paper.get("summary", "")
             url = paper.get("url", f"https://arxiv.org/abs/{arxiv_id}")
-            paper_date = paper.get("date", today)
 
-            summary_html = (
-                f'<div class="card-summary">{self._escape_html(summary)}</div>'
-                if summary
-                else ""
-            )
-
-            content_id = f"arxiv-{arxiv_id}"
-            action_buttons = self._build_action_buttons(
-                content_id=content_id,
-                title=title,
-                url=url,
-                content_type="arxiv",
-                date=paper_date,
-            )
+            summary_html = f'<p class="card-summary">{self._escape_html(summary)}</p>' if summary else ""
 
             html += f"""
-            <div class="card">
-                <div class="card-title"><a href="{url}">{self._escape_html(title)}</a></div>
-                {summary_html}
-                <div class="card-meta">
-                    <span>arXiv:{arxiv_id}</span>
+            <div class="content-card">
+                <div class="card-header">
+                    <span class="source-tag arxiv">arXiv</span>
+                    <span class="meta">{arxiv_id}</span>
                 </div>
-                {action_buttons}
+                <h3 class="card-title"><a href="{url}">{self._escape_html(title)}</a></h3>
+                {summary_html}
+            </div>
+"""
+
+        # Blog posts
+        for post in posts:
+            date_str = post.published_on.strftime("%m月%d日")
+            html += f"""
+            <div class="content-card">
+                <div class="card-header">
+                    <span class="source-tag blog">{post.source}</span>
+                    <span class="meta">{date_str}</span>
+                </div>
+                <h3 class="card-title"><a href="{post.url}">{self._escape_html(post.title)}</a></h3>
+                <p class="card-desc">{self._escape_html(post.summary or "")}</p>
             </div>
 """
 
         html += "</div>"
         return html
 
-    def _build_blog_section(self, posts: list[BlogPost]) -> str:
-        """Build tech blogs section."""
-        if not posts:
+    def _build_social_section(
+        self,
+        tweets: list[ContentItem],
+        videos: list[ContentItem],
+    ) -> str:
+        """Build social section with Twitter and YouTube content."""
+        has_content = tweets or videos
+        if not has_content:
             return ""
 
-        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
         html = """
         <div class="section">
-            <div class="section-header">
-                <div class="section-icon">&#9998;</div>
-                <div class="section-title">技术博客</div>
+            <h2 class="section-title">&#128172; 社交动态</h2>
+"""
+
+        # Twitter tweets
+        for tweet in tweets:
+            time_str = ""
+            if tweet.published_on:
+                time_str = tweet.published_on.strftime("%m月%d日")
+
+            engagement = ""
+            if tweet.engagement_score:
+                engagement = f"&#10084; {tweet.engagement_score:,}"
+
+            content = tweet.content or tweet.summary or ""
+            # Truncate long content
+            if len(content) > 200:
+                content = content[:200] + "..."
+
+            html += f"""
+            <div class="content-card">
+                <div class="card-header">
+                    <span class="source-tag twitter">&#128038; Twitter</span>
+                    <span class="meta">@{tweet.source} · {time_str}</span>
+                </div>
+                <p class="card-content">{self._escape_html(content)} <a href="{tweet.url}">查看 →</a></p>
+                <div class="card-footer">
+                    <span class="engagement">{engagement}</span>
+                </div>
             </div>
 """
 
-        for post in posts:
-            date_str = post.published_on.strftime("%m月%d日")
-            post_date = post.published_on.strftime("%Y-%m-%d")
-            content_id = f"blog-{post.source.lower().replace(' ', '-')}-{post.title[:30].lower().replace(' ', '-')}"
-            action_buttons = self._build_action_buttons(
-                content_id=content_id,
-                title=post.title,
-                url=post.url,
-                content_type="blog",
-                date=post_date,
-            )
+        # YouTube videos
+        for video in videos:
+            time_str = ""
+            if video.published_on:
+                time_str = video.published_on.strftime("%m月%d日")
+
+            views = video.metadata.get("view_count", 0) if video.metadata else 0
+            views_str = f"&#128064; {int(views):,} views" if views else ""
 
             html += f"""
-            <div class="card">
-                <div class="card-title"><a href="{post.url}">{self._escape_html(post.title)}</a></div>
-                <div class="card-description">{self._escape_html(post.summary)}</div>
-                <div class="card-meta">
-                    <span class="tag">{post.source}</span>
-                    <span>{date_str}</span>
+            <div class="content-card">
+                <div class="card-header">
+                    <span class="source-tag youtube">&#127909; YouTube</span>
+                    <span class="meta">{video.source} · {time_str}</span>
                 </div>
-                {action_buttons}
+                <h3 class="card-title"><a href="{video.url}">{self._escape_html(video.title)}</a></h3>
+                <p class="card-desc">{self._escape_html(video.summary or "")}</p>
+                <div class="card-footer">
+                    <span class="engagement">{views_str}</span>
+                </div>
             </div>
 """
 
@@ -728,6 +679,8 @@ class SmtpEmailSender(EmailSender):
     @staticmethod
     def _escape_html(text: str) -> str:
         """Escape HTML special characters."""
+        if not text:
+            return ""
         return (
             text.replace("&", "&amp;")
             .replace("<", "&lt;")
