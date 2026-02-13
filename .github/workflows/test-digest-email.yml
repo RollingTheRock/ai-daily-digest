@@ -36,7 +36,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        uv sync --no-cache
+        uv sync --no-cache --extra twitter --extra youtube
 
     - name: Run test email
       env:
@@ -57,6 +57,17 @@ jobs:
         # Web integration for favorites/notes
         DIGEST_WEB_URL: "https://rollingtherock.github.io/ai-daily-digest"
         SECRET_KEY: ${{ secrets.SECRET_KEY }}
+        # Twitter/X API (new content source)
+        TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
+        TWITTER_MIN_LIKES: ${{ secrets.TWITTER_MIN_LIKES || '100' }}
+        TWITTER_MAX_TWEETS_PER_USER: ${{ secrets.TWITTER_MAX_TWEETS_PER_USER || '5' }}
+        # YouTube Data API (new content source)
+        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        YOUTUBE_MIN_VIEWS: ${{ secrets.YOUTUBE_MIN_VIEWS || '10000' }}
+        YOUTUBE_MIN_DURATION_MINUTES: ${{ secrets.YOUTUBE_MIN_DURATION_MINUTES || '5' }}
+        YOUTUBE_MAX_VIDEOS_PER_CHANNEL: ${{ secrets.YOUTUBE_MAX_VIDEOS_PER_CHANNEL || '3' }}
+        # Content source configuration
+        CONTENT_SOURCES: ${{ secrets.CONTENT_SOURCES || 'arxiv,blog' }}
         # Test mode
         TEST_EMAIL_PROVIDER: ${{ github.event.inputs.email_provider }}
         DRY_RUN: ${{ github.event.inputs.dry_run }}
