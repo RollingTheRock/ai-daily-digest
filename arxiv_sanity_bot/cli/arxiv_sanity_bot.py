@@ -32,6 +32,8 @@ from arxiv_sanity_bot.sources import (  # noqa: E402
     GitHubTrendingClient,
     HuggingFaceExtendedClient,
     TechBlogClient,
+    TwitterClient,
+    YouTubeClient,
 )
 from arxiv_sanity_bot.email import (  # noqa: E402
     EmailSender,
@@ -319,6 +321,12 @@ def daily_digest(
     # Tech Blog Posts
     blog_posts = _fetch_blog_posts(blog_days, blog_limit)
 
+    # Twitter Content (if enabled)
+    tweets = _fetch_twitter_content()
+
+    # YouTube Content (if enabled)
+    videos = _fetch_youtube_content()
+
     logger.info(
         "Data collection complete",
         extra={
@@ -328,6 +336,8 @@ def daily_digest(
             "hf_spaces": len(hf_spaces),
             "arxiv_papers": len(arxiv_papers),
             "blog_posts": len(blog_posts),
+            "tweets": len(tweets),
+            "videos": len(videos),
         },
     )
 
@@ -336,15 +346,16 @@ def daily_digest(
         arxiv_papers = processor.batch_summarize_papers(arxiv_papers)
 
     logger.info("Generating daily insight...")
-    daily_insight = processor.generate_daily_insight(
-        github_repos, hf_models, blog_posts
+    daily_insight = processor.generate_mixed_content_digest(
+        arxiv_papers, blog_posts, tweets, videos
     )
     logger.info(f"Daily insight: {daily_insight[:100]}...")
 
     if dry:
         logger.info("DRY RUN: Would send email with collected data")
         _print_digest_summary(
-            github_repos, hf_models, hf_datasets, hf_spaces, arxiv_papers, blog_posts
+            github_repos, hf_models, hf_datasets, hf_spaces,
+            arxiv_papers, blog_posts, tweets, videos
         )
         return
 
@@ -490,8 +501,42 @@ def _fetch_blog_posts(days: int, limit_per_source: int) -> list:
         return []
 
 
+def _fetch_twitter_content() -> list:
+    """Fetch recent tweets from AI accounts (if enabled)."""
+    content_sources = os.environ.get("CONTENT_SOURCES", "arxiv,blog").split(",")
+    if "twitter" not in content_sources:
+        logger.info("Twitter content source disabled")
+        return []
+
+    try:
+        client = TwitterClient()
+        tweets = client.fetch_recent_tweets()
+        logger.info(f"Fetched {len(tweets)} tweets")
+        return tweets
+    except Exception as e:
+        logger.error(f"Twitter fetch failed: {e}", exc_info=True)
+        return []
+
+
+def _fetch_youtube_content() -> list:
+    """Fetch recent videos from AI channels (if enabled)."""
+    content_sources = os.environ.get("CONTENT_SOURCES", "arxiv,blog").split(",")
+    if "youtube" not in content_sources:
+        logger.info("YouTube content source disabled")
+        return []
+
+    try:
+        client = YouTubeClient()
+        videos = client.fetch_recent_videos()
+        logger.info(f"Fetched {len(videos)} videos")
+        return videos
+    except Exception as e:
+        logger.error(f"YouTube fetch failed: {e}", exc_info=True)
+        return []
+
+
 def _print_digest_summary(
-    github_repos, hf_models, hf_datasets, hf_spaces, arxiv_papers, blog_posts
+    github_repos, hf_models, hf_datasets, hf_spaces, arxiv_papers, blog_posts, tweets=None, videos=None
 ) -> None:
     """Print summary of digest content for dry run."""
     print("\n" + "=" * 60)
@@ -516,6 +561,18 @@ def _print_digest_summary(
     print(f"\n[Blog Posts] {len(blog_posts)}")
     for post in blog_posts[:3]:
         print(f"  - [{post.source}] {post.title[:50]}...")
+
+    # New content sources
+    if tweets is not None:
+        print(f"\n[Twitter] {len(tweets)} tweets")
+        for tweet in tweets[:3]:
+            content = tweet.content[:50] if tweet.content else tweet.title[:50]
+            print(f"  - [@{tweet.source}] {content}...")
+
+    if videos is not None:
+        print(f"\n[YouTube] {len(videos)} videos")
+        for video in videos[:3]:
+            print(f"  - [{video.source}] {video.title[:50]}...")
 
     print("\n" + "=" * 60)
 
