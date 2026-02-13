@@ -611,6 +611,8 @@ class SmtpEmailSender(EmailSender):
         if not has_content:
             return ""
 
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
+
         html = """
         <div class="section">
             <h2 class="section-title">&#128221; 深度阅读</h2>
