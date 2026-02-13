@@ -153,10 +153,12 @@ class SmtpEmailSender(EmailSender):
         arxiv_papers: list[dict[str, Any]],
         blog_posts: list[BlogPost],
         daily_insight: str = "",
-        tweets: list[ContentItem] = [],
-        videos: list[ContentItem] = [],
+        tweets: list[ContentItem] | None = None,
+        videos: list[ContentItem] | None = None,
     ) -> str:
         """Build HTML email content with Notion-inspired design."""
+        tweets = tweets or []
+        videos = videos or []
         today = datetime.now(tz=TIMEZONE).strftime("%m月%d日")
         weekday = datetime.now(tz=TIMEZONE).strftime("%A")
         weekday_cn = {
