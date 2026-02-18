@@ -796,8 +796,17 @@ def _send_to_notion_if_enabled(
         blog_top3: Top 3 blog posts
         tagged_contents: All scored and tagged contents
     """
-    if os.environ.get("OUTPUT_NOTION", "").lower() != "true":
+    # Debug: Log environment variable status
+    output_notion_val = os.environ.get("OUTPUT_NOTION", "")
+    logger.info(f"[Notion] Checking configuration: OUTPUT_NOTION={repr(output_notion_val)}")
+    logger.info(f"[Notion] NOTION_TOKEN configured: {bool(os.environ.get('NOTION_TOKEN'))}")
+    logger.info(f"[Notion] NOTION_DATABASE_ID configured: {bool(os.environ.get('NOTION_DATABASE_ID'))}")
+
+    if output_notion_val.lower() != "true":
+        logger.info(f"[Notion] Skipping Notion output: OUTPUT_NOTION is not 'true' (value: {repr(output_notion_val)})")
         return
+
+    logger.info("[Notion] Notion output is enabled, proceeding...")
 
     notion_token = os.environ.get("NOTION_TOKEN", "").strip()
     notion_database_id = os.environ.get("NOTION_DATABASE_ID", "").strip()
