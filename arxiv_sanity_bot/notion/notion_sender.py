@@ -17,13 +17,15 @@ logger = get_logger(__name__)
 # Notion API limits
 MAX_RICH_TEXT_LENGTH = 2000
 MAX_BLOCKS_PER_REQUEST = 100
+MAX_TOGGLE_CHILDREN = 50  # Limit children in toggle blocks to avoid too many blocks
 
 # Tag extraction rules
+# Note: \b (word boundary) only works for ASCII characters, not Chinese
 TAG_RULES = [
     (r"\b(LLM|language model|GPT|Claude|LLaMA|Qwen|Mixtral)\b", "LLM"),
-    (r"\b(safe|安全|alignment|guard|护栏|对齐)\b", "安全"),
+    (r"(safe|安全|alignment|guard|护栏|对齐)", "安全"),  # Removed \b for Chinese support
     (r"\b(agent|Agent|智能体|autonomous)\b", "Agent"),
-    (r"\b(multimodal|多模态|vision|image|diffusion| Stable Diffusion)\b", "多模态"),
+    (r"(multimodal|多模态|vision|image|diffusion|Stable Diffusion)", "多模态"),  # Fixed: removed space and \b
     (r"\b(tool|工具|framework|library|SDK|API)\b", "工具"),
 ]
 
@@ -177,7 +179,7 @@ class NotionSender:
         # Default tag
         tags.add("AI")
 
-        return sorted(list(tags))
+        return sorted(tags)
 
     def _calculate_importance(self, top3: list[dict]) -> str:
         """Calculate importance level based on top 3 average score.
@@ -266,11 +268,13 @@ class NotionSender:
 
         daily_insight = digest_data.get("daily_insight", "")
         if daily_insight:
+            # Truncate to avoid Notion API limits
+            truncated_insight = self._truncate_text(daily_insight, MAX_RICH_TEXT_LENGTH)
             blocks.append({
                 "object": "block",
                 "type": "paragraph",
                 "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": daily_insight}}]
+                    "rich_text": [{"type": "text", "text": {"content": truncated_insight}}]
                 }
             })
 
@@ -306,13 +310,14 @@ class NotionSender:
                 }
             })
 
-            # Reason
+            # Reason (truncated to avoid API limits)
             if reason:
+                truncated_reason = self._truncate_text(reason, MAX_RICH_TEXT_LENGTH)
                 blocks.append({
                     "object": "block",
                     "type": "paragraph",
                     "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": reason}}]
+                        "rich_text": [{"type": "text", "text": {"content": truncated_reason}}]
                     }
                 })
 
@@ -386,7 +391,7 @@ class NotionSender:
                 "type": "toggle",
                 "toggle": {
                     "rich_text": [{"type": "text", "text": {"content": f"{type_name} ({len(items)})"}}],
-                    "children": toggle_blocks[:50]  # Limit children to avoid too many blocks
+                    "children": toggle_blocks[:MAX_TOGGLE_CHILDREN]
                 }
             })
 
@@ -429,7 +434,7 @@ class NotionSender:
         # Remove empty groups
         return {k: v for k, v in groups.items() if v}
 
-    def _create_page(self, properties: dict) -> dict:
+    def _create_page(self, properties: dict[str, Any]) -> dict[str, Any]:
         """Create a new page in the Notion database.
 
         Args:

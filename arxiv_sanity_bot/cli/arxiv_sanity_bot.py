@@ -574,6 +574,19 @@ def daily_digest(
     else:
         logger.error("Failed to send Daily Digest")
 
+    # Notion Output (optional, parallel to email)
+    _send_to_notion_if_enabled(
+        daily_insight=daily_insight,
+        global_top3=global_top3,
+        github_top3=github_top3,
+        hf_models_top3=hf_models_top3,
+        hf_datasets_top3=hf_datasets_top3,
+        hf_spaces_top3=hf_spaces_top3,
+        arxiv_top3=arxiv_top3,
+        blog_top3=blog_top3,
+        tagged_contents=tagged_contents,
+    )
+
     logger.info("Daily Digest finishing")
 
 
@@ -754,6 +767,78 @@ def cli():
 
 cli.add_command(bot)
 cli.add_command(daily_digest)
+
+
+def _send_to_notion_if_enabled(
+    daily_insight: str,
+    global_top3: list[dict],
+    github_top3: list,
+    hf_models_top3: list,
+    hf_datasets_top3: list,
+    hf_spaces_top3: list,
+    arxiv_top3: list,
+    blog_top3: list,
+    tagged_contents: list[dict],
+) -> None:
+    """Send daily digest to Notion if OUTPUT_NOTION is enabled.
+
+    This function is called after email sending. Notion failures are logged
+    but do not affect the email sending flow.
+
+    Args:
+        daily_insight: AI-generated daily insight summary
+        global_top3: Global Top 3 contents across all types
+        github_top3: Top 3 GitHub repos
+        hf_models_top3: Top 3 HF models
+        hf_datasets_top3: Top 3 HF datasets
+        hf_spaces_top3: Top 3 HF spaces
+        arxiv_top3: Top 3 arXiv papers
+        blog_top3: Top 3 blog posts
+        tagged_contents: All scored and tagged contents
+    """
+    if os.environ.get("OUTPUT_NOTION", "").lower() != "true":
+        return
+
+    notion_token = os.environ.get("NOTION_TOKEN", "").strip()
+    notion_database_id = os.environ.get("NOTION_DATABASE_ID", "").strip()
+
+    if not notion_token or not notion_database_id:
+        logger.warning(
+            "Notion output enabled but NOTION_TOKEN or NOTION_DATABASE_ID not set"
+        )
+        return
+
+    try:
+        from arxiv_sanity_bot.notion import NotionSender
+
+        notion_sender = NotionSender(
+            token=notion_token,
+            database_id=notion_database_id,
+        )
+
+        today_str = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
+
+        # Combine HF items for easier handling
+        hf_top3 = hf_models_top3 + hf_datasets_top3 + hf_spaces_top3
+        hf_top3 = hf_top3[:3]  # Ensure only top 3
+
+        digest_data = {
+            "date": today_str,
+            "daily_insight": daily_insight,
+            "top3": global_top3,
+            "github_top3": github_top3,
+            "hf_top3": hf_top3,
+            "arxiv_top3": arxiv_top3,
+            "blog_top3": blog_top3,
+            "all_scored_contents": tagged_contents,
+        }
+
+        page_url = notion_sender.send_daily_digest(digest_data)
+        logger.info(f"Notion page created: {page_url}")
+
+    except Exception as e:
+        logger.error(f"Notion output failed: {e}", exc_info=True)
+        # Notion failure does not affect email sending
 
 
 if __name__ == "__main__":
