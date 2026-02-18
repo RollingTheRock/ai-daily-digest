@@ -578,12 +578,6 @@ def daily_digest(
     _send_to_notion_if_enabled(
         daily_insight=daily_insight,
         global_top3=global_top3,
-        github_top3=github_top3,
-        hf_models_top3=hf_models_top3,
-        hf_datasets_top3=hf_datasets_top3,
-        hf_spaces_top3=hf_spaces_top3,
-        arxiv_top3=arxiv_top3,
-        blog_top3=blog_top3,
         tagged_contents=tagged_contents,
     )
 
@@ -772,12 +766,6 @@ cli.add_command(daily_digest)
 def _send_to_notion_if_enabled(
     daily_insight: str,
     global_top3: list[dict],
-    github_top3: list,
-    hf_models_top3: list,
-    hf_datasets_top3: list,
-    hf_spaces_top3: list,
-    arxiv_top3: list,
-    blog_top3: list,
     tagged_contents: list[dict],
 ) -> None:
     """Send daily digest to Notion if OUTPUT_NOTION is enabled.
@@ -788,13 +776,7 @@ def _send_to_notion_if_enabled(
     Args:
         daily_insight: AI-generated daily insight summary
         global_top3: Global Top 3 contents across all types
-        github_top3: Top 3 GitHub repos
-        hf_models_top3: Top 3 HF models
-        hf_datasets_top3: Top 3 HF datasets
-        hf_spaces_top3: Top 3 HF spaces
-        arxiv_top3: Top 3 arXiv papers
-        blog_top3: Top 3 blog posts
-        tagged_contents: All scored and tagged contents
+        tagged_contents: All scored and tagged contents (dict format with type, title, url, tag, reason, score)
     """
     # Debug: Log environment variable status
     output_notion_val = os.environ.get("OUTPUT_NOTION", "")
@@ -827,18 +809,42 @@ def _send_to_notion_if_enabled(
 
         today_str = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
 
-        # Combine HF items for easier handling
-        hf_top3 = hf_models_top3 + hf_datasets_top3 + hf_spaces_top3
-        hf_top3 = hf_top3[:3]  # Ensure only top 3
+        # Extract Top 3 by type from tagged_contents (dict format)
+        # tagged_contents contains scored dicts with type, title, url, tag, reason, score
+        github_top3_dict = sorted(
+            [c for c in tagged_contents if c.get("type") == "github"],
+            key=lambda x: x.get("score", 0),
+            reverse=True
+        )[:3]
+
+        hf_top3_dict = sorted(
+            [c for c in tagged_contents if c.get("type") in ("hf_model", "hf_dataset", "hf_space")],
+            key=lambda x: x.get("score", 0),
+            reverse=True
+        )[:3]
+
+        arxiv_top3_dict = sorted(
+            [c for c in tagged_contents if c.get("type") == "arxiv"],
+            key=lambda x: x.get("score", 0),
+            reverse=True
+        )[:3]
+
+        blog_top3_dict = sorted(
+            [c for c in tagged_contents if c.get("type") == "blog"],
+            key=lambda x: x.get("score", 0),
+            reverse=True
+        )[:3]
+
+        logger.info(f"[Notion] Extracted from tagged_contents: GitHub={len(github_top3_dict)}, HF={len(hf_top3_dict)}, arXiv={len(arxiv_top3_dict)}, Blog={len(blog_top3_dict)}")
 
         digest_data = {
             "date": today_str,
             "daily_insight": daily_insight,
             "top3": global_top3,
-            "github_top3": github_top3,
-            "hf_top3": hf_top3,
-            "arxiv_top3": arxiv_top3,
-            "blog_top3": blog_top3,
+            "github_top3": github_top3_dict,
+            "hf_top3": hf_top3_dict,
+            "arxiv_top3": arxiv_top3_dict,
+            "blog_top3": blog_top3_dict,
             "all_scored_contents": tagged_contents,
         }
 
