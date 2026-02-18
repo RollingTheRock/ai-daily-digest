@@ -78,6 +78,10 @@ jobs:
         YOUTUBE_MAX_VIDEOS_PER_CHANNEL: ${{ secrets.YOUTUBE_MAX_VIDEOS_PER_CHANNEL || '3' }}
         # Content source selection
         CONTENT_SOURCES: ${{ secrets.CONTENT_SOURCES || 'arxiv,blog' }}
+        # Notion Output (optional)
+        NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        OUTPUT_NOTION: ${{ secrets.OUTPUT_NOTION || 'false' }}
       run: |
         echo "Running AI Daily Digest..."
         echo "LLM Provider: $LLM_PROVIDER"
