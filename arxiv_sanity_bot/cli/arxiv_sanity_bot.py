@@ -341,36 +341,185 @@ def daily_digest(
         },
     )
 
-    if not dry and arxiv_papers:
+    # Merge all content into unified format for AI scoring
+    all_contents = []
+
+    # GitHub repos
+    for repo in github_repos:
+        all_contents.append({
+            "type": "github",
+            "title": repo.name,
+            "stars": repo.stars_total or 0,
+            "description": (repo.description or "")[:200],
+            "_original": repo,
+        })
+
+    # HF Models
+    for model in hf_models:
+        all_contents.append({
+            "type": "hf_model",
+            "title": model.name,
+            "stars": model.downloads or model.likes or 0,
+            "description": (model.description or "")[:200],
+            "_original": model,
+        })
+
+    # HF Datasets
+    for dataset in hf_datasets:
+        all_contents.append({
+            "type": "hf_dataset",
+            "title": dataset.name,
+            "stars": dataset.downloads or dataset.likes or 0,
+            "description": (dataset.description or "")[:200],
+            "_original": dataset,
+        })
+
+    # HF Spaces
+    for space in hf_spaces:
+        all_contents.append({
+            "type": "hf_space",
+            "title": space.name,
+            "stars": space.likes or 0,
+            "description": (space.description or "")[:200],
+            "_original": space,
+        })
+
+    # arXiv papers
+    for paper in arxiv_papers:
+        all_contents.append({
+            "type": "arxiv",
+            "title": paper.get("title", ""),
+            "stars": paper.get("score", 0),
+            "description": (paper.get("abstract", ""))[:200],
+            "_original": paper,
+        })
+
+    # Blog posts
+    for post in blog_posts:
+        all_contents.append({
+            "type": "blog",
+            "title": post.title,
+            "stars": 0,
+            "description": (post.summary or "")[:200],
+            "_original": post,
+        })
+
+    # Tweets
+    for tweet in tweets:
+        all_contents.append({
+            "type": "twitter",
+            "title": tweet.title or f"@{tweet.source}",
+            "stars": tweet.engagement_score or 0,
+            "description": (tweet.content or tweet.summary or "")[:200],
+            "_original": tweet,
+        })
+
+    # YouTube videos
+    for video in videos:
+        view_count = 0
+        if video.metadata and "view_count" in video.metadata:
+            view_count = int(video.metadata.get("view_count", 0))
+        all_contents.append({
+            "type": "youtube",
+            "title": video.title,
+            "stars": view_count,
+            "description": (video.summary or "")[:200],
+            "_original": video,
+        })
+
+    logger.info(f"Merged {len(all_contents)} items for AI scoring")
+
+    # AI scoring
+    if all_contents:
+        logger.info("Starting AI scoring...")
+        tagged_contents = processor.score_and_tag_contents(all_contents)
+        logger.info(f"AI scoring complete for {len(tagged_contents)} items")
+
+        # Sort by score descending
+        tagged_contents.sort(key=lambda x: x.get("score", 0), reverse=True)
+
+        # Global Top 3
+        global_top3 = tagged_contents[:3]
+        logger.info(
+            "Global Top 3 selected",
+            extra={
+                "top3": [
+                    {"title": c.get("title", "")[:50], "score": c.get("score"), "tag": c.get("tag")}
+                    for c in global_top3
+                ]
+            },
+        )
+
+        # Extract Top 3 by type
+        def get_top3_by_type(contents: list[dict], content_type: str) -> list:
+            items = [c for c in contents if c.get("type") == content_type]
+            return [c.get("_original") for c in items[:3] if c.get("_original")]
+
+        github_top3 = get_top3_by_type(tagged_contents, "github")
+        hf_models_top3 = get_top3_by_type(tagged_contents, "hf_model")
+        hf_datasets_top3 = get_top3_by_type(tagged_contents, "hf_dataset")
+        hf_spaces_top3 = get_top3_by_type(tagged_contents, "hf_space")
+        arxiv_top3_raw = get_top3_by_type(tagged_contents, "arxiv")
+        blog_top3 = get_top3_by_type(tagged_contents, "blog")
+        tweets_top3 = get_top3_by_type(tagged_contents, "twitter")
+        videos_top3 = get_top3_by_type(tagged_contents, "youtube")
+
+        # Convert arXiv back to dict format
+        arxiv_top3 = [item if isinstance(item, dict) else {"arxiv": "", "title": "", "abstract": ""} for item in arxiv_top3_raw]
+
+        logger.info(
+            "Top 3 by type extracted",
+            extra={
+                "github": len(github_top3),
+                "hf_models": len(hf_models_top3),
+                "hf_datasets": len(hf_datasets_top3),
+                "hf_spaces": len(hf_spaces_top3),
+                "arxiv": len(arxiv_top3),
+                "blog": len(blog_top3),
+                "tweets": len(tweets_top3),
+                "videos": len(videos_top3),
+            },
+        )
+    else:
+        tagged_contents = []
+        global_top3 = []
+        github_top3 = github_repos[:3]
+        hf_models_top3 = hf_models[:3]
+        hf_datasets_top3 = hf_datasets[:3]
+        hf_spaces_top3 = hf_spaces[:3]
+        arxiv_top3 = arxiv_papers[:3]
+        blog_top3 = blog_posts[:3]
+        tweets_top3 = tweets[:3]
+        videos_top3 = videos[:3]
+
+    if not dry and arxiv_top3:
         logger.info("Generating paper summaries with DeepSeek...")
-        arxiv_papers = processor.batch_summarize_papers(arxiv_papers)
+        arxiv_top3 = processor.batch_summarize_papers(arxiv_top3)
 
     logger.info("Generating daily insight...")
-    # Convert arxiv_papers dicts to ContentItems for mixed digest
-    from arxiv_sanity_bot.schemas import ContentItem
-    arxiv_items: list[ContentItem] = []
-    for paper in arxiv_papers:
-        arxiv_items.append(ContentItem(
-            id=paper.get("arxiv", ""),
-            title=paper.get("title", ""),
-            source="arXiv",
-            source_type="arxiv",
-            url=paper.get("url", ""),
-            published_on=paper.get("published_on", datetime.now(tz=TIMEZONE)),
-            author="",
-            summary=paper.get("summary", ""),
-            content=paper.get("abstract", ""),
-        ))
-    daily_insight = processor.generate_mixed_content_digest(
-        arxiv_items, blog_posts, tweets, videos
-    )
+    # Build top3_context from global top 3
+    if global_top3:
+        top3_context = "\n".join([
+            f"- [{c.get('tag', '')}] {c.get('title', '')}: {c.get('reason', '')}"
+            for c in global_top3
+        ])
+    else:
+        top3_context = ""
+
+    daily_insight = processor.generate_daily_insight(top3_context)
     logger.info(f"Daily insight: {daily_insight[:100]}...")
 
     if dry:
         logger.info("DRY RUN: Would send email with collected data")
         _print_digest_summary(
-            github_repos, hf_models, hf_datasets, hf_spaces,
-            arxiv_papers, blog_posts, tweets, videos
+            github_top3, hf_models_top3, hf_datasets_top3, hf_spaces_top3,
+            arxiv_top3, blog_top3, tweets_top3, videos_top3
+        )
+        # Generate HTML preview for testing
+        _generate_html_preview(
+            github_top3, hf_models_top3, hf_datasets_top3, hf_spaces_top3,
+            arxiv_top3, blog_top3, tweets_top3, videos_top3,
+            daily_insight, tagged_contents, global_top3
         )
         return
 
@@ -405,17 +554,19 @@ def daily_digest(
         return
 
     success = sender.send_digest(
-        github_repos=github_repos,
-        hf_models=hf_models,
-        hf_datasets=hf_datasets,
-        hf_spaces=hf_spaces,
-        arxiv_papers=arxiv_papers,
-        blog_posts=blog_posts,
+        github_repos=github_top3,
+        hf_models=hf_models_top3,
+        hf_datasets=hf_datasets_top3,
+        hf_spaces=hf_spaces_top3,
+        arxiv_papers=arxiv_top3,
+        blog_posts=blog_top3,
         to_email=to_email,
         from_email=from_email,
         daily_insight=daily_insight,
-        tweets=tweets,
-        videos=videos,
+        tweets=tweets_top3,
+        videos=videos_top3,
+        all_scored_contents=tagged_contents,
+        global_top3=global_top3,
     )
 
     if success:

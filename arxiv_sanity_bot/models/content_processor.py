@@ -1,5 +1,6 @@
 """Lightweight content processing using DeepSeek API."""
 
+import json
 import os
 from typing import Any
 
@@ -24,50 +25,210 @@ class ContentProcessor:
             self._client = OpenAI()
         return self._client
 
-    def generate_daily_insight(
-        self,
-        github_repos: list[Any],
-        hf_models: list[Any],
-        blog_posts: list[Any],
-    ) -> str:
+    def _fallback_scoring(
+        self, contents: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """
-        Generate a brief daily insight based on trending content.
-        Lightweight - uses minimal tokens.
+        Fallback scoring when AI scoring fails.
+
+        Uses rule-based scoring based on engagement metrics.
+        Base score: 5, with bonuses for stars and content type.
+
+        Args:
+            contents: List of content dicts with type, title, stars, etc.
+
+        Returns:
+            Contents with score, tag, and reason added.
         """
-        # Build a concise context
-        context_parts = []
+        results = []
+        for item in contents:
+            score = 5  # Base score
+            content_type = item.get("type", "")
+            stars = item.get("stars", 0) or 0
 
-        if github_repos:
-            repo_names = [r.name for r in github_repos[:3]]
-            context_parts.append(f"GitHub热门: {', '.join(repo_names)}")
+            # GitHub stars bonus
+            if content_type == "github":
+                if stars > 500:
+                    score += 3
+                elif stars > 100:
+                    score += 1
 
-        if hf_models:
-            model_names = [m.name.split("/")[-1] for m in hf_models[:2]]
-            context_parts.append(f"HF模型: {', '.join(model_names)}")
+            # arXiv papers get a small bonus for academic depth
+            if content_type == "arxiv":
+                score += 1
 
-        if blog_posts:
-            blog_titles = [b.title[:30] for b in blog_posts[:2]]
-            context_parts.append(f"博客: {'; '.join(blog_titles)}")
+            # Cap at 10
+            score = min(score, 10)
 
-        if not context_parts:
-            return "今日 AI 领域稳步发展，各平台均有新动态。"
+            # Assign tag based on score
+            if score >= 8:
+                tag = "🔥 必看"
+            elif score >= 5:
+                tag = "📖 深度"
+            else:
+                tag = "⚡ 速览"
 
-        context = "\n".join(context_parts)
+            # Use first 40 chars of description as reason
+            description = item.get("description", "")
+            reason = description[:40] + "..." if len(description) > 40 else description
+            if not reason:
+                reason = "值得关注的内容"
+
+            # Copy and add scoring fields
+            item_copy = item.copy()
+            item_copy["score"] = score
+            item_copy["tag"] = tag
+            item_copy["reason"] = reason
+            results.append(item_copy)
+
+        logger.warning(f"Fallback scoring applied to {len(contents)} items (AI scoring failed)")
+        return results
+
+    def score_and_tag_contents(
+        self, contents: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Score and tag content items using AI or fallback rules.
+
+        Uses DeepSeek AI to score each item 1-10 based on:
+        - 30% popularity (stars, citations)
+        - 30% novelty (new concepts/projects)
+        - 40% practical value (usable tools > theory)
+
+        Tags: 🔥必看 (≥8), 📖深度 (5-7), ⚡速览 (<5)
+
+        Args:
+            contents: List of content dicts with type, title, stars, description
+
+        Returns:
+            Contents with score, tag, and reason fields added
+        """
+        if not contents:
+            return []
+
+        # Build indexed content list for AI
+        content_lines = []
+        for i, item in enumerate(contents, 1):
+            content_type = item.get("type", "unknown")
+            title = item.get("title", "")
+            stars = item.get("stars", "")
+            description = item.get("description", "")[:200]  # Truncate for tokens
+            content_lines.append(
+                f"{i}. [{content_type}] {title} (stars: {stars})\n   {description}"
+            )
+
+        content_text = "\n\n".join(content_lines)
 
         history = [
             {
                 "role": "system",
-                "content": "你是一位资深AI资讯编辑。请用2-3句话总结今日AI领域的主要趋势和亮点，语气自然、专业，像晨报导语。可以适当展开，控制在150字以内。",
+                "content": (
+                    "你是 AI 资讯筛选助手。请对以下内容逐条打分和标签。\n\n"
+                    "打分规则（1-10）：\n"
+                    "- 热度（star数、引用量）占 30%\n"
+                    "- 新颖度（首次出现的新项目/概念）占 30%\n"
+                    "- 实用价值（可直接使用的工具 > 纯理论研究）占 40%\n\n"
+                    "标签规则：\n"
+                    "- 🔥 必看：≥ 8 分，重大突破或超高热度\n"
+                    "- 📖 深度：5-7 分，值得深入了解\n"
+                    "- ⚡ 速览：< 5 分，了解即可\n\n"
+                    "输出格式（严格 JSON）：\n"
+                    '[{"index": 1, "score": 8, "tag": "🔥 必看", "reason": "一句话推荐理由"}, ...]'
+                ),
             },
             {
                 "role": "user",
-                "content": f"基于以下信息生成今日洞察（丰富但不冗长）：\n{context}",
+                "content": f"请对以下内容逐条打分（共 {len(contents)} 条）：\n\n{content_text}\n\n请返回 JSON 数组：",
+            },
+        ]
+
+        try:
+            response = self._get_client()._call_openai(history)
+
+            # Parse JSON response
+            try:
+                # Extract JSON from response (handle markdown code blocks)
+                json_str = response.strip()
+                if "```json" in json_str:
+                    parts = json_str.split("```json")
+                    if len(parts) > 1:
+                        inner = parts[1]
+                        json_str = inner.split("```")[0] if "```" in inner else inner
+                elif "```" in json_str:
+                    parts = json_str.split("```")
+                    if len(parts) > 1:
+                        json_str = parts[1]
+
+                scores_data = json.loads(json_str.strip())
+
+                # Validate and apply scores
+                if isinstance(scores_data, list) and len(scores_data) == len(contents):
+                    results = []
+                    for i, (item, score_info) in enumerate(zip(contents, scores_data), 1):
+                        # Validate index matches expected position
+                        if score_info.get("index") != i:
+                            logger.debug(f"Index mismatch at position {i}: expected {i}, got {score_info.get('index')}")
+                        item_copy = item.copy()
+                        item_copy["score"] = score_info.get("score", 5)
+                        item_copy["tag"] = score_info.get("tag", "📖 深度")
+                        item_copy["reason"] = score_info.get(
+                            "reason", "值得关注的内容"
+                        )
+                        results.append(item_copy)
+                    return results
+                else:
+                    logger.warning(
+                        f"AI scoring returned invalid format or length mismatch, using fallback"
+                    )
+                    return self._fallback_scoring(contents)
+
+            except (json.JSONDecodeError, KeyError) as e:
+                logger.warning(f"Failed to parse AI scoring response: {e}")
+                return self._fallback_scoring(contents)
+
+        except Exception as e:
+            logger.warning(f"AI scoring API call failed: {e}")
+            return self._fallback_scoring(contents)
+
+    def generate_daily_insight(self, top3_context: str) -> str:
+        """
+        Generate a brief daily insight based on top 3 content items.
+
+        Focuses on the most important items only, keeping output under 80 chars.
+
+        Args:
+            top3_context: Formatted string of top 3 content items by importance
+
+        Returns:
+            Brief insight string (max ~80 chars)
+        """
+        if not top3_context:
+            return "今日 AI 领域稳步发展。"
+
+        history = [
+            {
+                "role": "system",
+                "content": (
+                    "你是 AI 晨报编辑。请生成今日洞察，要求：\n"
+                    "1. 第一句：今天最重要的一件事（加粗处理）\n"
+                    "2. 第二句：为什么重要 / 对开发者意味着什么\n"
+                    "3. 第三句（可选）：另一个值得关注的动向\n\n"
+                    "规则：\n"
+                    "- 总共不超过 80 字\n"
+                    '- 不要用"今日AI领域"这样的套话开头\n'
+                    "- 直接说事，像发给朋友的消息一样\n"
+                    "- 用中文"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"以下是今日 Top 3 内容（已按重要性排序）：\n{top3_context}\n\n请生成洞察：",
             },
         ]
 
         try:
             insight = self._get_client()._call_openai(history)
-            return insight.strip() if insight else "今日 AI 领域呈现多元发展态势。"
+            return insight.strip() if insight else "今日 AI 领域有新动态值得关注。"
         except Exception as e:
             logger.warning(f"Failed to generate daily insight: {e}")
             return "今日 AI 领域持续活跃，值得关注。"
@@ -83,11 +244,17 @@ class ContentProcessor:
         history = [
             {
                 "role": "system",
-                "content": "你是学术论文助手。用2-3句话概括论文核心贡献，面向技术读者，突出创新点。控制在100字以内，语言自然。",
+                "content": (
+                    "你是学术论文助手。用 1-2 句话概括论文核心贡献。\n"
+                    "规则：\n"
+                    "- 控制在 60 字以内\n"
+                    '- 第一句说"做了什么"，第二句说"效果如何"\n'
+                    '- 不要用"本文""该研究"等学术套话'
+                ),
             },
             {
                 "role": "user",
-                "content": f"标题: {title}\n\n摘要: {truncated}\n\n请生成简洁中文摘要:",
+                "content": f"标题: {title}\n\n摘要: {truncated}\n\n一句话概括:",
             },
         ]
 
@@ -250,15 +417,17 @@ class ContentProcessor:
             {
                 "role": "system",
                 "content": (
-                    "你是一位资深AI资讯编辑。基于以下多源内容生成今日洞察：\n"
-                    "- 概括主要趋势和热点\n"
-                    "- 提及重要论文、博客、社交媒体讨论\n"
-                    "- 语气自然专业，控制在200字以内"
+                    "你是 AI 晨报编辑。基于以下 Top 3 内容生成今日洞察：\n\n"
+                    "规则：\n"
+                    "- 总共不超过 80 字\n"
+                    "- 第一句直接说今天最重要的事\n"
+                    "- 不要罗列每个源的内容，而是提炼一个核心主题\n"
+                    "- 像发给朋友的消息，不要用套话"
                 ),
             },
             {
                 "role": "user",
-                "content": f"今日内容汇总：\n{context}\n\n生成洞察：",
+                "content": f"今日 Top 3 内容：\n{context}\n\n请提炼洞察：",
             },
         ]
 

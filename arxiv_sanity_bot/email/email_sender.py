@@ -34,23 +34,27 @@ class EmailSender:
         daily_insight: str = "",
         tweets: list[ContentItem] | None = None,
         videos: list[ContentItem] | None = None,
+        all_scored_contents: list[dict[str, Any]] | None = None,
+        global_top3: list[dict[str, Any]] | None = None,
     ) -> bool:
         """
         Send a daily digest email.
 
         Args:
-            github_repos: List of trending GitHub repos
-            hf_models: List of trending HF models
-            hf_datasets: List of trending HF datasets
-            hf_spaces: List of trending HF spaces
-            arxiv_papers: List of arXiv papers with summaries
-            blog_posts: List of recent blog posts
+            github_repos: List of trending GitHub repos (filtered to Top 3)
+            hf_models: List of trending HF models (filtered to Top 3)
+            hf_datasets: List of trending HF datasets (filtered to Top 3)
+            hf_spaces: List of trending HF spaces (filtered to Top 3)
+            arxiv_papers: List of arXiv papers with summaries (filtered to Top 3)
+            blog_posts: List of recent blog posts (filtered to Top 3)
             to_email: Recipient email address
             from_email: Sender email address
             subject: Email subject (optional)
             daily_insight: Daily insight summary from LLM (optional)
-            tweets: List of Twitter content items (optional)
-            videos: List of YouTube content items (optional)
+            tweets: List of Twitter content items (filtered to Top 3, optional)
+            videos: List of YouTube content items (filtered to Top 3, optional)
+            all_scored_contents: All contents with AI scores (optional)
+            global_top3: Global Top 3 contents across all types (optional)
 
         Returns:
             True if sent successfully, False otherwise
@@ -90,23 +94,27 @@ class SendGridEmailSender(EmailSender):
         daily_insight: str = "",
         tweets: list[ContentItem] | None = None,
         videos: list[ContentItem] | None = None,
+        all_scored_contents: list[dict[str, Any]] | None = None,
+        global_top3: list[dict[str, Any]] | None = None,
     ) -> bool:
         """
         Send a daily digest email via SendGrid.
 
         Args:
-            github_repos: List of trending GitHub repos
-            hf_models: List of trending HF models
-            hf_datasets: List of trending HF datasets
-            hf_spaces: List of trending HF spaces
-            arxiv_papers: List of arXiv papers with summaries
-            blog_posts: List of recent blog posts
+            github_repos: List of trending GitHub repos (filtered to Top 3)
+            hf_models: List of trending HF models (filtered to Top 3)
+            hf_datasets: List of trending HF datasets (filtered to Top 3)
+            hf_spaces: List of trending HF spaces (filtered to Top 3)
+            arxiv_papers: List of arXiv papers with summaries (filtered to Top 3)
+            blog_posts: List of recent blog posts (filtered to Top 3)
             to_email: Recipient email address
             from_email: Sender email address
             subject: Email subject (optional)
             daily_insight: Daily insight summary from LLM
-            tweets: List of Twitter content items (optional)
-            videos: List of YouTube content items (optional)
+            tweets: List of Twitter content items (filtered to Top 3, optional)
+            videos: List of YouTube content items (filtered to Top 3, optional)
+            all_scored_contents: All contents with AI scores (optional)
+            global_top3: Global Top 3 contents across all types (optional)
 
         Returns:
             True if sent successfully, False otherwise
@@ -115,7 +123,8 @@ class SendGridEmailSender(EmailSender):
             today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
             subject = f"🤖 AI Daily Digest - {today}"
 
-        # SendGrid uses simplified template (Twitter/YouTube not yet supported)
+        # Note: SendGrid version uses simplified template
+        # global_top3 and all_scored_contents are available for future enhancement
         html_content = self._build_html_email(
             github_repos=github_repos,
             hf_models=hf_models,
@@ -123,6 +132,7 @@ class SendGridEmailSender(EmailSender):
             hf_spaces=hf_spaces,
             arxiv_papers=arxiv_papers,
             blog_posts=blog_posts,
+            global_top3=global_top3,
         )
 
         try:
@@ -172,6 +182,7 @@ class SendGridEmailSender(EmailSender):
         hf_spaces: list[HFModel],
         arxiv_papers: list[dict[str, Any]],
         blog_posts: list[BlogPost],
+        global_top3: list[dict[str, Any]] | None = None,
     ) -> str:
         """Build HTML email content."""
         today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d %A")

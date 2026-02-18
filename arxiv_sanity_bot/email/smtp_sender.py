@@ -65,23 +65,27 @@ class SmtpEmailSender(EmailSender):
         daily_insight: str = "",
         tweets: list[ContentItem] | None = None,
         videos: list[ContentItem] | None = None,
+        all_scored_contents: list[dict[str, Any]] | None = None,
+        global_top3: list[dict[str, Any]] | None = None,
     ) -> bool:
         """
         Send a daily digest email via SMTP.
 
         Args:
-            github_repos: List of trending GitHub repos
-            hf_models: List of trending HF models
-            hf_datasets: List of trending HF datasets
-            hf_spaces: List of trending HF spaces
-            arxiv_papers: List of arXiv papers with summaries
-            blog_posts: List of recent blog posts
+            github_repos: List of trending GitHub repos (filtered to Top 3)
+            hf_models: List of trending HF models (filtered to Top 3)
+            hf_datasets: List of trending HF datasets (filtered to Top 3)
+            hf_spaces: List of trending HF spaces (filtered to Top 3)
+            arxiv_papers: List of arXiv papers with summaries (filtered to Top 3)
+            blog_posts: List of recent blog posts (filtered to Top 3)
             to_email: Recipient email address
             from_email: Sender email address
             subject: Email subject (optional)
             daily_insight: Daily insight summary from LLM
-            tweets: List of Twitter content items (optional)
-            videos: List of YouTube content items (optional)
+            tweets: List of Twitter content items (filtered to Top 3, optional)
+            videos: List of YouTube content items (filtered to Top 3, optional)
+            all_scored_contents: All contents with AI scores (optional)
+            global_top3: Global Top 3 contents across all types (optional)
 
         Returns:
             True if sent successfully, False otherwise
@@ -110,6 +114,8 @@ class SmtpEmailSender(EmailSender):
             daily_insight=daily_insight,
             tweets=tweets or [],
             videos=videos or [],
+            all_scored_contents=all_scored_contents,
+            global_top3=global_top3,
         )
 
         try:
@@ -157,10 +163,14 @@ class SmtpEmailSender(EmailSender):
         daily_insight: str = "",
         tweets: list[ContentItem] | None = None,
         videos: list[ContentItem] | None = None,
+        all_scored_contents: list[dict[str, Any]] | None = None,
+        global_top3: list[dict[str, Any]] | None = None,
     ) -> str:
         """Build HTML email content with Notion-inspired design."""
         tweets = tweets or []
         videos = videos or []
+        all_scored_contents = all_scored_contents or []
+        global_top3 = global_top3 or []
         today = datetime.now(tz=TIMEZONE).strftime("%m月%d日")
         weekday = datetime.now(tz=TIMEZONE).strftime("%A")
         weekday_cn = {
@@ -244,9 +254,6 @@ class SmtpEmailSender(EmailSender):
             font-weight: 600;
             color: #2383e2;
             margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
         }}
 
         .insight-text {{
@@ -328,6 +335,112 @@ class SmtpEmailSender(EmailSender):
         .source-tag.youtube {{
             color: #ff0000;
             background: rgba(255, 0, 0, 0.08);
+        }}
+
+        /* Featured Card Styles */
+        .featured-card {{
+            background: #f7f7f5;
+            border-radius: 6px;
+            padding: 14px 16px;
+            margin-bottom: 8px;
+        }}
+
+        .featured-header {{
+            margin-bottom: 8px;
+        }}
+
+        /* Tag Styles */
+        .tag-must-read {{
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #fff3e0;
+            color: #e65100;
+            margin-right: 8px;
+        }}
+
+        .tag-deep {{
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #e3f2fd;
+            color: #1565c0;
+            margin-right: 8px;
+        }}
+
+        .tag-quick {{
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 500;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #f5f5f5;
+            color: #757575;
+            margin-right: 8px;
+        }}
+
+        /* Featured Title */
+        .featured-title {{
+            font-size: 14px;
+            font-weight: 600;
+            margin: 8px 0;
+            line-height: 1.4;
+        }}
+
+        .featured-title a {{
+            color: #37352f;
+            text-decoration: none;
+        }}
+
+        .featured-title a:hover {{
+            color: #2383e2;
+            text-decoration: underline;
+        }}
+
+        /* Featured Reason */
+        .featured-reason {{
+            font-size: 13px;
+            color: #6b6b6b;
+            margin: 0 0 8px 0;
+            line-height: 1.5;
+        }}
+
+        /* More Section */
+        .more-section {{
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e8e8e8;
+        }}
+
+        .more-title {{
+            font-size: 16px;
+            font-weight: 600;
+            color: #37352f;
+            margin-bottom: 12px;
+        }}
+
+        .more-item {{
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }}
+
+        .more-item a {{
+            color: #37352f;
+            text-decoration: none;
+            font-size: 13px;
+        }}
+
+        .more-item a:hover {{
+            color: #2383e2;
+        }}
+
+        .more-count {{
+            color: #9b9b9b;
+            font-size: 13px;
         }}
 
         /* Card Title - Clickable */
@@ -476,7 +589,7 @@ class SmtpEmailSender(EmailSender):
         <div class="header">
             <div class="header-icon">&#129302;</div>
             <h1>AI 晨报</h1>
-            <div class="subtitle">每日 AI 要点，5 分钟速览</div>
+            <div class="subtitle">每日 AI 要点，2 分钟速览</div>
             <div class="date">{today} · {weekday_cn}</div>
         </div>
 """
@@ -485,19 +598,16 @@ class SmtpEmailSender(EmailSender):
         if daily_insight:
             html += f"""
         <div class="insight-box">
-            <div class="insight-label">&#128204; 今日洞察</div>
+            <div class="insight-label">&#10024; 今日洞察</div>
             <div class="insight-text">{self._escape_html(daily_insight)}</div>
         </div>
 """
 
-        # Trending Section (GitHub + HuggingFace)
-        html += self._build_trending_section(github_repos, hf_models, hf_datasets, hf_spaces)
+        # Featured Section (Global Top 3)
+        html += self._build_featured_section(global_top3)
 
-        # Reading Section (arXiv + Blog)
-        html += self._build_reading_section(arxiv_papers, blog_posts)
-
-        # Social Section (Twitter + YouTube)
-        html += self._build_social_section(tweets, videos)
+        # More Section (Category Links)
+        html += self._build_more_section(all_scored_contents)
 
         html += """
         <div class="footer">
@@ -728,6 +838,160 @@ class SmtpEmailSender(EmailSender):
         html += "</div>"
         return html
 
+    def _build_featured_section(self, global_top3: list[dict[str, Any]]) -> str:
+        """Build featured section with global top 3 content."""
+        if not global_top3:
+            return ""
+
+        html = """
+        <div class="section">
+            <h2 class="section-title">&#128293; 今日精选</h2>
+"""
+
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
+
+        for item in global_top3:
+            tag = item.get("tag", "")
+            title = item.get("title", "")
+            url = item.get("url", "")
+            reason = item.get("reason", "")
+            content_type = item.get("type", "")
+
+            # Determine tag class
+            tag_class = "tag-quick"
+            if "必看" in tag:
+                tag_class = "tag-must-read"
+            elif "深度" in tag:
+                tag_class = "tag-deep"
+
+            # Determine source tag class
+            source_class = ""
+            source_label = ""
+            if content_type == "github":
+                source_class = "github"
+                source_label = "GitHub"
+            elif content_type in ("hf_model", "hf_dataset", "hf_space"):
+                source_class = "hf"
+                source_label = "HuggingFace"
+            elif content_type == "arxiv":
+                source_class = "arxiv"
+                source_label = "arXiv"
+            elif content_type == "blog":
+                source_class = "blog"
+                source_label = "Blog"
+            elif content_type == "twitter":
+                source_class = "twitter"
+                source_label = "Twitter"
+            elif content_type == "youtube":
+                source_class = "youtube"
+                source_label = "YouTube"
+
+            # Generate action buttons
+            content_id = f"{content_type}-{title[:30].replace(' ', '-')}"
+            buttons = self._build_action_buttons(content_id, title, url, content_type, today)
+
+            html += f"""
+            <div class="featured-card">
+                <div class="featured-header">
+                    <span class="{tag_class}">{tag}</span>
+                    <span class="source-tag {source_class}">{source_label}</span>
+                </div>
+                <h3 class="featured-title"><a href="{url}">{self._escape_html(title)}</a></h3>
+                <p class="featured-reason">{self._escape_html(reason)}</p>
+                {buttons}
+            </div>
+"""
+
+        html += "</div>"
+        return html
+
+    def _build_more_section(self, all_scored_contents: list[dict[str, Any]]) -> str:
+        """Build more section with category links."""
+        if not all_scored_contents:
+            return ""
+
+        # Count by category
+        github_count = sum(1 for c in all_scored_contents if c.get("type") == "github")
+        hf_count = sum(1 for c in all_scored_contents if c.get("type") in ("hf_model", "hf_dataset", "hf_space"))
+        arxiv_count = sum(1 for c in all_scored_contents if c.get("type") == "arxiv")
+        blog_count = sum(1 for c in all_scored_contents if c.get("type") == "blog")
+        social_count = sum(1 for c in all_scored_contents if c.get("type") in ("twitter", "youtube"))
+
+        base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
+
+        html = """
+        <div class="more-section">
+            <h2 class="more-title">&#128194; 更多内容</h2>
+"""
+
+        if github_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/github">GitHub 热门仓库 <span class="more-count">{github_count} 个项目 &rarr;</span></a>
+            </div>
+"""
+        elif github_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>GitHub 热门仓库 <span class="more-count">{github_count} 个项目</span></span>
+            </div>
+"""
+
+        if hf_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/huggingface">HuggingFace 趋势 <span class="more-count">{hf_count} 个模型 &rarr;</span></a>
+            </div>
+"""
+        elif hf_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>HuggingFace 趋势 <span class="more-count">{hf_count} 个模型</span></span>
+            </div>
+"""
+
+        if arxiv_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/arxiv">arXiv 论文精选 <span class="more-count">{arxiv_count} 篇论文 &rarr;</span></a>
+            </div>
+"""
+        elif arxiv_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>arXiv 论文精选 <span class="more-count">{arxiv_count} 篇论文</span></span>
+            </div>
+"""
+
+        if blog_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/blog">技术博客 <span class="more-count">{blog_count} 篇文章 &rarr;</span></a>
+            </div>
+"""
+        elif blog_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>技术博客 <span class="more-count">{blog_count} 篇文章</span></span>
+            </div>
+"""
+
+        if social_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/social">社交动态 <span class="more-count">{social_count} 条 &rarr;</span></a>
+            </div>
+"""
+        elif social_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>社交动态 <span class="more-count">{social_count} 条</span></span>
+            </div>
+"""
+
+        html += "</div>"
+        return html
+
     def _build_action_buttons(self, content_id: str, title: str, url: str, content_type: str, date: str) -> str:
         base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
         if not base_url:
@@ -740,6 +1004,160 @@ class SmtpEmailSender(EmailSender):
         except Exception as e:
             logger.warning(f"Failed to generate action buttons: {e}")
             return ""
+
+    def _build_featured_section(self, global_top3: list[dict[str, Any]]) -> str:
+        """Build featured section with global top 3 content."""
+        if not global_top3:
+            return ""
+
+        html = """
+        <div class="section">
+            <h2 class="section-title">&#128293; 今日精选</h2>
+"""
+
+        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
+
+        for item in global_top3:
+            tag = item.get("tag", "")
+            title = item.get("title", "")
+            url = item.get("url", "")
+            reason = item.get("reason", "")
+            content_type = item.get("type", "")
+
+            # Determine tag class
+            tag_class = "tag-quick"
+            if "必看" in tag:
+                tag_class = "tag-must-read"
+            elif "深度" in tag:
+                tag_class = "tag-deep"
+
+            # Determine source tag class
+            source_class = ""
+            source_label = ""
+            if content_type == "github":
+                source_class = "github"
+                source_label = "GitHub"
+            elif content_type in ("hf_model", "hf_dataset", "hf_space"):
+                source_class = "hf"
+                source_label = "HuggingFace"
+            elif content_type == "arxiv":
+                source_class = "arxiv"
+                source_label = "arXiv"
+            elif content_type == "blog":
+                source_class = "blog"
+                source_label = "Blog"
+            elif content_type == "twitter":
+                source_class = "twitter"
+                source_label = "Twitter"
+            elif content_type == "youtube":
+                source_class = "youtube"
+                source_label = "YouTube"
+
+            # Generate action buttons
+            content_id = f"{content_type}-{title[:30].replace(' ', '-')}"
+            buttons = self._build_action_buttons(content_id, title, url, content_type, today)
+
+            html += f"""
+            <div class="featured-card">
+                <div class="featured-header">
+                    <span class="{tag_class}">{tag}</span>
+                    <span class="source-tag {source_class}">{source_label}</span>
+                </div>
+                <h3 class="featured-title"><a href="{url}">{self._escape_html(title)}</a></h3>
+                <p class="featured-reason">{self._escape_html(reason)}</p>
+                {buttons}
+            </div>
+"""
+
+        html += "</div>"
+        return html
+
+    def _build_more_section(self, all_scored_contents: list[dict[str, Any]]) -> str:
+        """Build more section with category links."""
+        if not all_scored_contents:
+            return ""
+
+        # Count by category
+        github_count = sum(1 for c in all_scored_contents if c.get("type") == "github")
+        hf_count = sum(1 for c in all_scored_contents if c.get("type") in ("hf_model", "hf_dataset", "hf_space"))
+        arxiv_count = sum(1 for c in all_scored_contents if c.get("type") == "arxiv")
+        blog_count = sum(1 for c in all_scored_contents if c.get("type") == "blog")
+        social_count = sum(1 for c in all_scored_contents if c.get("type") in ("twitter", "youtube"))
+
+        base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
+
+        html = """
+        <div class="more-section">
+            <h2 class="more-title">&#128194; 更多内容</h2>
+"""
+
+        if github_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/github">GitHub 热门仓库 <span class="more-count">{github_count} 个项目 &rarr;</span></a>
+            </div>
+"""
+        elif github_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>GitHub 热门仓库 <span class="more-count">{github_count} 个项目</span></span>
+            </div>
+"""
+
+        if hf_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/huggingface">HuggingFace 趋势 <span class="more-count">{hf_count} 个模型 &rarr;</span></a>
+            </div>
+"""
+        elif hf_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>HuggingFace 趋势 <span class="more-count">{hf_count} 个模型</span></span>
+            </div>
+"""
+
+        if arxiv_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/arxiv">arXiv 论文精选 <span class="more-count">{arxiv_count} 篇论文 &rarr;</span></a>
+            </div>
+"""
+        elif arxiv_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>arXiv 论文精选 <span class="more-count">{arxiv_count} 篇论文</span></span>
+            </div>
+"""
+
+        if blog_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/blog">技术博客 <span class="more-count">{blog_count} 篇文章 &rarr;</span></a>
+            </div>
+"""
+        elif blog_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>技术博客 <span class="more-count">{blog_count} 篇文章</span></span>
+            </div>
+"""
+
+        if social_count > 0 and base_url:
+            html += f"""
+            <div class="more-item">
+                <a href="{base_url}/social">社交动态 <span class="more-count">{social_count} 条 &rarr;</span></a>
+            </div>
+"""
+        elif social_count > 0:
+            html += f"""
+            <div class="more-item">
+                <span>社交动态 <span class="more-count">{social_count} 条</span></span>
+            </div>
+"""
+
+        html += "</div>"
+        return html
 
     @staticmethod
     def _escape_html(text: str) -> str:
