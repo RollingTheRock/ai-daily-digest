@@ -23,9 +23,15 @@ MAX_TOGGLE_CHILDREN = 50  # Limit children in toggle blocks to avoid too many bl
 # Note: \b (word boundary) only works for ASCII characters, not Chinese
 TAG_RULES = [
     (r"\b(LLM|language model|GPT|Claude|LLaMA|Qwen|Mixtral)\b", "LLM"),
-    (r"(safe|安全|alignment|guard|护栏|对齐)", "安全"),  # Removed \b for Chinese support
+    (
+        r"(safe|安全|alignment|guard|护栏|对齐)",
+        "安全",
+    ),  # Removed \b for Chinese support
     (r"\b(agent|Agent|智能体|autonomous)\b", "Agent"),
-    (r"(multimodal|多模态|vision|image|diffusion|Stable Diffusion)", "多模态"),  # Fixed: removed space and \b
+    (
+        r"(multimodal|多模态|vision|image|diffusion|Stable Diffusion)",
+        "多模态",
+    ),  # Fixed: removed space and \b
     (r"\b(tool|工具|framework|library|SDK|API)\b", "工具"),
 ]
 
@@ -94,33 +100,25 @@ class NotionSender:
 
         # Create page properties
         properties = {
-            "标题": {
-                "title": [{"text": {"content": f"{date} AI 晨报"}}]
-            },
-            "日期": {
-                "date": {"start": date}
-            },
+            "标题": {"title": [{"text": {"content": f"{date} AI 晨报"}}]},
+            "日期": {"date": {"start": date}},
             "今日洞察": {
-                "rich_text": [{"text": {"content": self._truncate_text(daily_insight, MAX_RICH_TEXT_LENGTH)}}]
+                "rich_text": [
+                    {
+                        "text": {
+                            "content": self._truncate_text(
+                                daily_insight, MAX_RICH_TEXT_LENGTH
+                            )
+                        }
+                    }
+                ]
             },
-            "热门项目": {
-                "rich_text": [{"text": {"content": hot_projects}}]
-            },
-            "论文精选": {
-                "rich_text": [{"text": {"content": papers}}]
-            },
-            "博客速递": {
-                "rich_text": [{"text": {"content": blogs}}]
-            },
-            "我的笔记": {
-                "rich_text": []
-            },
-            "标签": {
-                "multi_select": [{"name": tag} for tag in tags]
-            },
-            "重要程度": {
-                "select": {"name": importance}
-            },
+            "热门项目": {"rich_text": [{"text": {"content": hot_projects}}]},
+            "论文精选": {"rich_text": [{"text": {"content": papers}}]},
+            "博客速递": {"rich_text": [{"text": {"content": blogs}}]},
+            "我的笔记": {"rich_text": []},
+            "标签": {"multi_select": [{"name": tag} for tag in tags]},
+            "重要程度": {"select": {"name": importance}},
         }
 
         # Create the page
@@ -168,7 +166,10 @@ class NotionSender:
             if content_type == "github":
                 # Check for open source indicators
                 text_lower = f"{title} {description}".lower()
-                if any(word in text_lower for word in ["open source", "github", "license", "mit", "apache"]):
+                if any(
+                    word in text_lower
+                    for word in ["open source", "github", "license", "mit", "apache"]
+                ):
                     tags.add("开源")
 
         # Apply regex rules
@@ -221,15 +222,21 @@ class NotionSender:
             title = item.get("title", "")
             reason = item.get("reason", "")
             stars = item.get("stars", 0)
+            # Support both "url" and "link" fields for compatibility
+            url = item.get("url", "") or item.get("link", "")
 
             if stars:
                 line = f"{tag} {title} | ⭐ {stars} | {reason}"
             else:
                 line = f"{tag} {title} | {reason}"
 
+            # Append URL if available
+            if url:
+                line += f"\n🔗 {url}"
+
             lines.append(line)
 
-        content = "\n".join(lines)
+        content = "\n\n".join(lines)
         return self._truncate_text(content, MAX_RICH_TEXT_LENGTH)
 
     def _truncate_text(self, text: str, max_length: int) -> str:
@@ -244,7 +251,7 @@ class NotionSender:
         """
         if len(text) <= max_length:
             return text
-        return text[:max_length - 3] + "..."
+        return text[: max_length - 3] + "..."
 
     def _build_blocks(self, digest_data: dict[str, Any]) -> list[dict]:
         """Build Notion blocks for page content.
@@ -258,40 +265,46 @@ class NotionSender:
         blocks = []
 
         # Section: Daily Insight
-        blocks.append({
-            "object": "block",
-            "type": "heading_2",
-            "heading_2": {
-                "rich_text": [{"type": "text", "text": {"content": "✨ 今日洞察"}}]
+        blocks.append(
+            {
+                "object": "block",
+                "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [{"type": "text", "text": {"content": "✨ 今日洞察"}}]
+                },
             }
-        })
+        )
 
         daily_insight = digest_data.get("daily_insight", "")
         if daily_insight:
             # Truncate to avoid Notion API limits
             truncated_insight = self._truncate_text(daily_insight, MAX_RICH_TEXT_LENGTH)
-            blocks.append({
-                "object": "block",
-                "type": "paragraph",
-                "paragraph": {
-                    "rich_text": [{"type": "text", "text": {"content": truncated_insight}}]
+            blocks.append(
+                {
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [
+                            {"type": "text", "text": {"content": truncated_insight}}
+                        ]
+                    },
                 }
-            })
+            )
 
-        blocks.append({
-            "object": "block",
-            "type": "divider",
-            "divider": {}
-        })
+        blocks.append({"object": "block", "type": "divider", "divider": {}})
 
         # Section: Top 3
-        blocks.append({
-            "object": "block",
-            "type": "heading_2",
-            "heading_2": {
-                "rich_text": [{"type": "text", "text": {"content": "🔥 今日精选 Top 3"}}]
+        blocks.append(
+            {
+                "object": "block",
+                "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [
+                        {"type": "text", "text": {"content": "🔥 今日精选 Top 3"}}
+                    ]
+                },
             }
-        })
+        )
 
         top3 = digest_data.get("top3", [])
         for item in top3:
@@ -299,55 +312,72 @@ class NotionSender:
             content_type = item.get("type", "")
             title = item.get("title", "")
             reason = item.get("reason", "")
-            url = item.get("url", "")
+            # Support both "url" and "link" fields for compatibility
+            url = item.get("url", "") or item.get("link", "")
 
             # Heading
-            blocks.append({
-                "object": "block",
-                "type": "heading_3",
-                "heading_3": {
-                    "rich_text": [{"type": "text", "text": {"content": f"{tag} [{content_type}] {title}"}}]
+            blocks.append(
+                {
+                    "object": "block",
+                    "type": "heading_3",
+                    "heading_3": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {"content": f"{tag} [{content_type}] {title}"},
+                            }
+                        ]
+                    },
                 }
-            })
+            )
 
             # Reason (truncated to avoid API limits)
             if reason:
                 truncated_reason = self._truncate_text(reason, MAX_RICH_TEXT_LENGTH)
-                blocks.append({
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{"type": "text", "text": {"content": truncated_reason}}]
+                blocks.append(
+                    {
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [
+                                {"type": "text", "text": {"content": truncated_reason}}
+                            ]
+                        },
                     }
-                })
+                )
 
-            # URL with link
+            # URL with link - "🔗 查看原文" format
             if url:
-                blocks.append({
-                    "object": "block",
-                    "type": "paragraph",
-                    "paragraph": {
-                        "rich_text": [{
-                            "type": "text",
-                            "text": {"content": url, "link": {"url": url}}
-                        }]
+                blocks.append(
+                    {
+                        "object": "block",
+                        "type": "paragraph",
+                        "paragraph": {
+                            "rich_text": [
+                                {
+                                    "type": "text",
+                                    "text": {
+                                        "content": "🔗 查看原文",
+                                        "link": {"url": url},
+                                    },
+                                }
+                            ]
+                        },
                     }
-                })
+                )
 
-        blocks.append({
-            "object": "block",
-            "type": "divider",
-            "divider": {}
-        })
+        blocks.append({"object": "block", "type": "divider", "divider": {}})
 
         # Section: Full Content
-        blocks.append({
-            "object": "block",
-            "type": "heading_2",
-            "heading_2": {
-                "rich_text": [{"type": "text", "text": {"content": "📂 完整内容"}}]
+        blocks.append(
+            {
+                "object": "block",
+                "type": "heading_2",
+                "heading_2": {
+                    "rich_text": [{"type": "text", "text": {"content": "📂 完整内容"}}]
+                },
             }
-        })
+        )
 
         # Group by type
         all_contents = digest_data.get("all_scored_contents", [])
@@ -362,38 +392,60 @@ class NotionSender:
             for item in items:
                 score = item.get("score", 0)
                 title = item.get("title", "")
-                item_url = item.get("url", "")
+                # Support both "url" and "link" fields for compatibility
+                item_url = item.get("url", "") or item.get("link", "")
 
-                item_text = f"[{score}] {title}"
-                if item_url:
-                    toggle_blocks.append({
+                # First paragraph: tag, title and score
+                item_text = f"{item.get('tag', '')} {title} | ⭐ {score} 分"
+                toggle_blocks.append(
+                    {
                         "object": "block",
                         "type": "paragraph",
                         "paragraph": {
                             "rich_text": [
-                                {"type": "text", "text": {"content": item_text + " | "}},
-                                {"type": "text", "text": {"content": item_url, "link": {"url": item_url}}}
+                                {"type": "text", "text": {"content": item_text}}
                             ]
+                        },
+                    }
+                )
+
+                # Second paragraph: URL link if available
+                if item_url:
+                    toggle_blocks.append(
+                        {
+                            "object": "block",
+                            "type": "paragraph",
+                            "paragraph": {
+                                "rich_text": [
+                                    {"type": "text", "text": {"content": "🔗 "}},
+                                    {
+                                        "type": "text",
+                                        "text": {
+                                            "content": item_url,
+                                            "link": {"url": item_url},
+                                        },
+                                    },
+                                ]
+                            },
                         }
-                    })
-                else:
-                    toggle_blocks.append({
-                        "object": "block",
-                        "type": "paragraph",
-                        "paragraph": {
-                            "rich_text": [{"type": "text", "text": {"content": item_text}}]
-                        }
-                    })
+                    )
 
             # Add toggle block
-            blocks.append({
-                "object": "block",
-                "type": "toggle",
-                "toggle": {
-                    "rich_text": [{"type": "text", "text": {"content": f"{type_name} ({len(items)})"}}],
-                    "children": toggle_blocks[:MAX_TOGGLE_CHILDREN]
+            blocks.append(
+                {
+                    "object": "block",
+                    "type": "toggle",
+                    "toggle": {
+                        "rich_text": [
+                            {
+                                "type": "text",
+                                "text": {"content": f"{type_name} ({len(items)})"},
+                            }
+                        ],
+                        "children": toggle_blocks[:MAX_TOGGLE_CHILDREN],
+                    },
                 }
-            })
+            )
 
         return blocks
 
@@ -444,8 +496,7 @@ class NotionSender:
             Created page object from Notion API
         """
         return self.notion.pages.create(
-            parent={"database_id": self.database_id},
-            properties=properties
+            parent={"database_id": self.database_id}, properties=properties
         )
 
     def _append_blocks(self, page_id: str, blocks: list[dict]) -> None:
@@ -458,9 +509,6 @@ class NotionSender:
             blocks: List of block objects to append
         """
         for i in range(0, len(blocks), MAX_BLOCKS_PER_REQUEST):
-            batch = blocks[i:i + MAX_BLOCKS_PER_REQUEST]
-            self.notion.blocks.children.append(
-                block_id=page_id,
-                children=batch
-            )
+            batch = blocks[i : i + MAX_BLOCKS_PER_REQUEST]
+            self.notion.blocks.children.append(block_id=page_id, children=batch)
             logger.debug(f"Appended batch of {len(batch)} blocks")
