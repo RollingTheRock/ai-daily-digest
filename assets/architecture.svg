@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="960" height="520">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="card-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34d399"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#60a5fa"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="960" height="520" rx="16" fill="url(#bg-grad)"/>
+  
+  <!-- Title -->
+  <text x="480" y="42" text-anchor="middle" fill="#94a3b8" font-size="14" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" letter-spacing="2">SYSTEM ARCHITECTURE</text>
+  
+  <!-- === TOP SECTION: GitHub Actions Trigger === -->
+  <rect x="380" y="64" width="200" height="48" rx="10" fill="url(#accent)" filter="url(#glow)"/>
+  <text x="480" y="93" text-anchor="middle" fill="#ffffff" font-size="14" font-family="-apple-system, sans-serif" font-weight="600">⏰ GitHub Actions</text>
+  
+  <!-- Arrow down -->
+  <line x1="480" y1="112" x2="480" y2="130" stroke="#475569" stroke-width="2" stroke-dasharray="4,3"/>
+  <polygon points="475,128 480,136 485,128" fill="#475569"/>
+  
+  <!-- === DATA SOURCES ROW === -->
+  <text x="60" y="155" fill="#64748b" font-size="11" font-family="sans-serif" font-weight="600" letter-spacing="1">DATA SOURCES</text>
+  
+  <!-- Source cards -->
+  <rect x="60" y="170" width="170" height="64" rx="10" fill="url(#card-grad)" stroke="#334155" stroke-width="1"/>
+  <text x="145" y="198" text-anchor="middle" fill="#fbbf24" font-size="18">⭐</text>
+  <text x="145" y="220" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif" font-weight="600">GitHub Trending</text>
+  
+  <rect x="260" y="170" width="170" height="64" rx="10" fill="url(#card-grad)" stroke="#334155" stroke-width="1"/>
+  <text x="345" y="198" text-anchor="middle" fill="#fbbf24" font-size="18">🤗</text>
+  <text x="345" y="220" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif" font-weight="600">HuggingFace</text>
+  
+  <rect x="460" y="170" width="170" height="64" rx="10" fill="url(#card-grad)" stroke="#334155" stroke-width="1"/>
+  <text x="545" y="198" text-anchor="middle" fill="#f87171" font-size="18">📄</text>
+  <text x="545" y="220" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif" font-weight="600">arXiv Papers</text>
+  
+  <rect x="660" y="170" width="170" height="64" rx="10" fill="url(#card-grad)" stroke="#334155" stroke-width="1"/>
+  <text x="745" y="198" text-anchor="middle" fill="#60a5fa" font-size="18">📝</text>
+  <text x="745" y="220" text-anchor="middle" fill="#e2e8f0" font-size="12" font-family="sans-serif" font-weight="600">Tech Blogs</text>
+  
+  <!-- Source arrows converging -->
+  <line x1="145" y1="234" x2="145" y2="250" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <line x1="345" y1="234" x2="345" y2="250" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <line x1="545" y1="234" x2="545" y2="250" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <line x1="745" y1="234" x2="745" y2="250" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2"/>
+  
+  <line x1="145" y1="250" x2="745" y2="250" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <line x1="480" y1="250" x2="480" y2="268" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <polygon points="475,266 480,274 485,266" fill="#475569"/>
+  
+  <!-- === AI PROCESSOR === -->
+  <rect x="360" y="280" width="240" height="56" rx="12" fill="url(#accent)" filter="url(#glow)"/>
+  <text x="480" y="305" text-anchor="middle" fill="#ffffff" font-size="13" font-family="sans-serif" font-weight="600">🧠 DeepSeek AI</text>
+  <text x="480" y="323" text-anchor="middle" fill="#c7d2fe" font-size="11" font-family="sans-serif">摘要生成 · 趋势洞察</text>
+  
+  <!-- Arrow down -->
+  <line x1="480" y1="336" x2="480" y2="354" stroke="#475569" stroke-width="2" stroke-dasharray="4,3"/>
+  <polygon points="475,352 480,360 485,352" fill="#475569"/>
+  
+  <!-- === OUTPUT ROW === -->
+  <rect x="160" y="374" width="280" height="80" rx="12" fill="url(#card-grad)" stroke="#334155" stroke-width="1"/>
+  <rect x="160" y="374" width="4" height="80" rx="2" fill="url(#green)"/>
+  <text x="310" y="404" text-anchor="middle" fill="#34d399" font-size="20">📧</text>
+  <text x="310" y="430" text-anchor="middle" fill="#e2e8f0" font-size="13" font-family="sans-serif" font-weight="600">Email Digest</text>
+  <text x="310" y="446" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">SMTP · 每日 8:00</text>
+  
+  <rect x="520" y="374" width="280" height="80" rx="12" fill="url(#card-grad)" stroke="#334155" stroke-width="1"/>
+  <rect x="520" y="374" width="4" height="80" rx="2" fill="url(#blue)"/>
+  <text x="670" y="404" text-anchor="middle" fill="#60a5fa" font-size="20">🔖</text>
+  <text x="670" y="430" text-anchor="middle" fill="#e2e8f0" font-size="13" font-family="sans-serif" font-weight="600">Web Bookmark</text>
+  <text x="670" y="446" text-anchor="middle" fill="#64748b" font-size="10" font-family="sans-serif">GitHub Pages · React</text>
+  
+  <!-- Output arrows -->
+  <line x1="440" y1="318" x2="300" y2="374" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <line x1="520" y1="318" x2="660" y2="374" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2"/>
+  
+  <!-- === BOTTOM: Data Storage === -->
+  <line x1="660" y1="454" x2="660" y2="468" stroke="#475569" stroke-width="1.5" stroke-dasharray="3,2"/>
+  <polygon points="655,466 660,474 665,466" fill="#475569"/>
+  
+  <rect x="520" y="480" width="280" height="28" rx="14" fill="#1e293b" stroke="#334155" stroke-width="1"/>
+  <text x="660" y="499" text-anchor="middle" fill="#94a3b8" font-size="11" font-family="sans-serif">💾 Private GitHub Repo · stars.json · notes.json</text>
+  
+  <!-- Legend -->
+  <text x="60" y="499" fill="#475569" font-size="10" font-family="sans-serif">Daily Digest Flow</text>
+</svg>
