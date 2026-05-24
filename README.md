@@ -1,28 +1,58 @@
-# AI 日报 - 每日 AI 资讯自动推送
+<div align="center">
 
-[![AI Daily Digest](https://github.com/RollingTheRock/ai-daily-digest/actions/workflows/daily-digest.yml/badge.svg)](https://github.com/RollingTheRock/ai-daily-digest/actions/workflows/daily-digest.yml)
+<img src="assets/logo.svg" width="120" height="120" alt="AI Daily Digest Logo">
 
-每天早上 8 点，自动收集并发送 AI 领域最新动态到你的邮箱。同时提供 Web 收藏夹功能，方便管理和记录学习笔记。
+# AI Daily Digest
 
-> **致谢**：本项目基于 [giacomov/arxiv-sanity-bot](https://github.com/giacomov/arxiv-sanity-bot) 原版项目改造而成，感谢原作者的开源贡献。
+**每天早上 8 点，自动收集并发送 AI 领域最新动态到你的邮箱。**
+
+同时提供 Web 收藏夹功能，方便管理和记录学习笔记。
+
+<br>
+
+<img alt="GitHub Stars" src="https://img.shields.io/github/stars/RollingTheRock/ai-daily-digest?style=flat-square&color=fbbf24&logo=github">
+<img alt="License" src="https://img.shields.io/github/license/RollingTheRock/ai-daily-digest?style=flat-square&color=34d399">
+<img alt="Python" src="https://img.shields.io/badge/Python-3.12%2B-3776ab?style=flat-square&logo=python&logoColor=white">
+<img alt="React" src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white">
+<img alt="Deploy" src="https://img.shields.io/badge/Deploy-GitHub%20Actions-2088ff?style=flat-square&logo=githubactions&logoColor=white">
+
+<br>
+
+[快速开始](#快速开始) · [功能特性](#功能特性) · [Web 收藏夹](#web-收藏夹) · [技术架构](#技术架构) · [本地开发](#本地开发)
+
+</div>
+
+<br>
+
+<img src="assets/screenshot_email.png" alt="AI Daily Digest Email">
+
+> 精美的日报邮件，涵盖 GitHub 热门、HuggingFace 趋势、arXiv 论文和技术博客
+
+<br>
+
+<img src="assets/screenshot_webapp.png" alt="AI Digest Web Bookmark">
+
+> 简洁的 Web 收藏夹，支持分类筛选、标签管理和笔记记录
 
 ---
 
 ## 功能特性
 
-### 日报邮件
-- **GitHub 热门仓库** - 追踪每日最受欢迎的 AI 开源项目
-- **HuggingFace 趋势** - 热门模型、数据集和 Spaces
-- **arXiv 论文精选** - AI 领域最新研究论文及中文摘要
-- **技术博客** - OpenAI、Anthropic 等公司最新博客文章
-- **AI 生成洞察** - 使用 DeepSeek AI 生成每日趋势总结
+### 📧 日报邮件
 
-### Web 收藏夹
-- **内容收藏** - 收藏感兴趣的 GitHub 仓库、论文、模型和博客
-- **标签管理** - 为收藏添加自定义标签，方便分类
-- **学习笔记** - 记录想法、疑问和 TODO，支持独立保存
-- **离线查看** - 本地缓存，快速访问已收藏内容
-- **数据私有** - 所有数据存储在你的 GitHub 私有仓库中
+- **GitHub 热门仓库** — 追踪每日最受欢迎的 AI 开源项目
+- **HuggingFace 趋势** — 热门模型、数据集和 Spaces
+- **arXiv 论文精选** — AI 领域最新研究论文及中文摘要
+- **技术博客** — OpenAI、Anthropic 等公司最新博客文章
+- **AI 生成洞察** — 使用 DeepSeek AI 生成每日趋势总结
+
+### 🔖 Web 收藏夹
+
+- **内容收藏** — 收藏感兴趣的 GitHub 仓库、论文、模型和博客
+- **标签管理** — 为收藏添加自定义标签，方便分类
+- **学习笔记** — 记录想法、疑问和 TODO，支持独立保存
+- **离线查看** — 本地缓存，快速访问已收藏内容
+- **数据私有** — 所有数据存储在你的 GitHub 私有仓库中
 
 ---
 
@@ -47,19 +77,19 @@
 进入你 Fork 的仓库 → Settings → Secrets and variables → Actions，添加以下 Secrets：
 
 | Secret 名称 | 说明 | 示例 |
-|------------|------|------|
+| --- | --- | --- |
 | `LLM_PROVIDER` | AI 服务提供商 | `deepseek` |
 | `DEEPSEEK_API_KEY` | DeepSeek API Key | `sk-xxxxxxxx` |
 | `SMTP_HOST` | 邮件服务器地址 | `smtp.qq.com` |
 | `SMTP_PORT` | 邮件服务器端口 | `465` |
 | `SMTP_USER` | 邮箱用户名 | `yourname@qq.com` |
-| `SMTP_PASS` | 邮箱授权码（非密码）| `xxxxxxxx` |
+| `SMTP_PASS` | 邮箱授权码（非密码） | `xxxxxxxx` |
 | `FROM_EMAIL` | 发件人邮箱 | `yourname@qq.com` |
 | `TO_EMAIL` | 收件人邮箱 | `yourname@example.com` |
 
 **如何获取：**
 
-- **DeepSeek API Key**: 访问 [DeepSeek 开放平台](https://platform.deepseek.com/) 注册并创建 API Key
+- **DeepSeek API Key**: 访问 [DeepSeek 开放平台](https://platform.deepseek.com) 注册并创建 API Key
 - **QQ 邮箱授权码**: 登录 QQ 邮箱 → 设置 → 账户 → 开启 SMTP 服务 → 获取授权码
 
 #### 3. 启用 Workflow
@@ -76,11 +106,9 @@
 
 ---
 
-## Web 收藏夹使用指南
+## Web 收藏夹
 
-### 访问地址
-
-部署完成后，访问：`https://你的用户名.github.io/ai-daily-digest`
+部署完成后，访问 `https://你的用户名.github.io/ai-daily-digest`
 
 ### 首次使用
 
@@ -90,12 +118,10 @@
    - Homepage URL: `https://你的用户名.github.io/ai-daily-digest`
    - Authorization callback URL: `https://你的用户名.github.io/ai-daily-digest`
    - 保存生成的 Client ID
-
 2. **配置 Client ID**
    - 编辑 `web/src/config.ts`
    - 将 `githubClientId` 替换为你的 Client ID
    - 提交并推送，自动重新部署
-
 3. **登录**
    - 访问 Web 收藏夹页面
    - 使用 Personal Access Token 登录
@@ -104,6 +130,7 @@
 ### 使用方法
 
 **收藏内容：**
+
 - 在日报邮件中点击收藏链接
 - 或直接访问带参数的 URL：
   ```
@@ -111,18 +138,45 @@
   ```
 
 **添加笔记：**
+
 - 点击收藏项的 ✏️ 按钮
 - 填写想法、疑问、TODO
 - 保存后自动关联到收藏
 
 **查看笔记：**
+
 - 点击收藏项的 📝 按钮
 - 在弹窗中查看完整笔记
 - 点击"编辑笔记"修改内容
 
 **管理标签：**
+
 - 收藏时可添加标签
 - 按标签筛选收藏内容
+
+---
+
+## 技术架构
+
+<img src="assets/architecture.svg" alt="Architecture" width="100%">
+
+### 日报系统
+
+| 组件 | 说明 |
+| --- | --- |
+| GitHub Actions | 定时触发器，每天 UTC 00:00 运行 |
+| 数据源 | GitHub API、HuggingFace、arXiv、RSS |
+| AI 处理 | DeepSeek API 生成摘要和洞察 |
+| 输出 | SMTP 邮件发送 |
+
+### Web 收藏夹
+
+| 组件 | 说明 |
+| --- | --- |
+| GitHub Pages | React 纯前端应用 |
+| 认证 | GitHub Device Flow |
+| 存储 | 私有仓库 `ai-daily-digest-data` |
+| 数据 | `stars.json` + `notes.json` |
 
 ---
 
@@ -138,9 +192,10 @@ schedule:
 ```
 
 常见时间：
-- `0 0 * * *` - 每天早上 8 点（默认）
-- `0 22 * * *` - 每天早上 6 点
-- `0 14 * * *` - 每天晚上 10 点
+
+- `0 0 * * *` — 每天早上 8 点（默认）
+- `0 22 * * *` — 每天早上 6 点
+- `0 14 * * *` — 每天晚上 10 点
 
 ### 调整内容数量
 
@@ -161,114 +216,29 @@ args: |
 
 ---
 
-## 技术架构
-
-### 日报系统
-
-```
-┌─────────────────┐
-│  GitHub Actions │
-│  (定时触发)      │
-└────────┬────────┘
-         │
-    ┌────┴────┐
-    ▼         ▼
-┌────────┐ ┌──────────┐
-│  arXiv │ │  GitHub  │
-└────────┘ └──────────┘
-┌────────┐ ┌──────────┐
-│   HF   │ │   RSS    │
-└────────┘ └──────────┘
-    │         │
-    └────┬────┘
-         ▼
-┌─────────────────┐
-│ DeepSeek AI     │
-│ (摘要生成)       │
-└────────┬────────┘
-         ▼
-┌─────────────────┐
-│   SMTP/QQ邮箱   │
-│  (邮件发送)      │
-└─────────────────┘
-```
-
-### Web 收藏夹
-
-```
-┌─────────────────────────┐      ┌──────────────────────┐
-│      GitHub Pages       │      │    私有数据仓库       │
-│   (React 纯前端应用)     │◄────►│  ai-daily-digest-data │
-├─────────────────────────┤      ├──────────────────────┤
-│  Device Flow 认证        │      │  data/stars.json     │
-│  GitHub API 读写         │─────►│  data/notes.json     │
-│  LocalStorage 缓存       │      └──────────────────────┘
-└─────────────────────────┘
-```
-
----
-
-## 项目结构
-
-```
-ai-daily-digest/
-├── .github/workflows/
-│   ├── daily-digest.yml          # 日报邮件工作流
-│   ├── deploy-web.yml            # Web 部署工作流
-│   └── run-arxiv-sanity-bot.yml  # 原 Twitter Bot
-│
-├── arxiv_sanity_bot/             # Python 后端（日报生成）
-│   ├── sources/                  # 数据源模块
-│   │   ├── github_trending.py
-│   │   ├── huggingface_extended.py
-│   │   └── tech_blogs.py
-│   ├── email/                    # 邮件发送模块
-│   │   ├── email_sender.py
-│   │   └── smtp_sender.py
-│   └── models/                   # AI 模型
-│       ├── openai.py
-│       └── content_processor.py
-│
-├── web/                          # React 前端（收藏夹）
-│   ├── src/
-│   │   ├── pages/                # 页面组件
-│   │   │   ├── Home.tsx          # 收藏夹主页
-│   │   │   ├── Star.tsx          # 添加收藏
-│   │   │   ├── Note.tsx          # 添加笔记
-│   │   │   └── Login.tsx         # 登录页面
-│   │   ├── lib/                  # 核心库
-│   │   │   ├── github-auth.ts    # GitHub 认证
-│   │   │   └── github-storage.ts # 数据操作
-│   │   └── config.ts             # 配置文件
-│   └── package.json
-│
-├── docs/
-│   └── dev-log.md                # 开发日志
-│
-└── README.md                     # 本文件
-```
-
----
-
 ## 本地开发
 
 ### 后端（日报系统）
 
 **环境要求：**
+
 - Python 3.12+
-- [uv](https://github.com/astral-sh/uv) 包管理器
+- uv 包管理器
 
 **安装依赖：**
+
 ```bash
 uv sync
 ```
 
 **本地测试（不发送邮件）：**
+
 ```bash
 uv run arxiv-sanity-bot daily-digest --dry
 ```
 
 **本地运行（真实发送）：**
+
 ```bash
 export LLM_PROVIDER=deepseek
 export DEEPSEEK_API_KEY=sk-xxx
@@ -284,23 +254,57 @@ uv run arxiv-sanity-bot daily-digest
 ### 前端（收藏夹）
 
 **环境要求：**
+
 - Node.js 20+
 - npm 或 yarn
 
 **安装依赖：**
+
 ```bash
 cd web
 npm install
 ```
 
 **本地开发：**
+
 ```bash
 npm run dev
 ```
 
 **构建：**
+
 ```bash
 npm run build
+```
+
+---
+
+## 项目结构
+
+```
+ai-daily-digest/
+├── .github/workflows/
+│   ├── daily-digest.yml          # 日报邮件工作流
+│   ├── deploy-web.yml            # Web 部署工作流
+│   └── run-arxiv-sanity-bot.yml  # 原 Twitter Bot
+│
+├── arxiv_sanity_bot/             # Python 后端（日报生成）
+│   ├── sources/                  # 数据源模块
+│   ├── email/                    # 邮件发送模块
+│   └── models/                   # AI 模型
+│
+├── web/                          # React 前端（收藏夹）
+│   ├── src/
+│   │   ├── pages/                # 页面组件
+│   │   ├── lib/                  # 核心库
+│   │   └── config.ts             # 配置文件
+│   └── package.json
+│
+├── assets/                       # README 配图
+├── docs/
+│   └── dev-log.md                # 开发日志
+│
+└── README.md                     # 本文件
 ```
 
 ---
@@ -310,7 +314,7 @@ npm run build
 ### 日报邮件
 
 **Q: 邮件发送失败？**
-A: 检查 SMTP_PASS 是否使用的是授权码而非邮箱密码。QQ 邮箱需要在设置中开启 SMTP 并获取授权码。
+A: 检查 `SMTP_PASS` 是否使用的是授权码而非邮箱密码。QQ 邮箱需要在设置中开启 SMTP 并获取授权码。
 
 **Q: DeepSeek API 报错？**
 A: 确认 `LLM_PROVIDER` 设置为 `deepseek`（小写），且 `DEEPSEEK_API_KEY` 正确设置。
@@ -339,10 +343,12 @@ A: 不会。笔记和收藏是独立的，取消收藏后笔记仍然保留，�
 
 ## 费用说明
 
-- **GitHub Actions**: 免费版每月 2000 分钟，本项目每次运行约 5-10 分钟，完全够用
-- **GitHub Pages**: 免费托管静态网站
-- **DeepSeek API**: 按 token 计费，每日约消耗 5000-10000 tokens，费用极低（约 0.01-0.02 元/天）
-- **邮件发送**: 使用自己的邮箱，无额外费用
+| 服务 | 费用 |
+| --- | --- |
+| GitHub Actions | 免费版每月 2000 分钟，每次运行约 5-10 分钟 |
+| GitHub Pages | 免费托管静态网站 |
+| DeepSeek API | 每日约 5000-10000 tokens，约 0.01-0.02 元/天 |
+| 邮件发送 | 使用自己的邮箱，无额外费用 |
 
 ---
 
@@ -357,12 +363,7 @@ A: 不会。笔记和收藏是独立的，取消收藏后笔记仍然保留，�
 
 ## 致谢
 
-本项目基于 **[giacomov/arxiv-sanity-bot](https://github.com/giacomov/arxiv-sanity-bot)** 改造而来，感谢原作者的开源贡献！
-
-原项目功能：
-- 从 AlphaXiv 和 HuggingFace 获取 trending papers
-- 使用 OpenAI API 生成推文摘要
-- 自动发布到 X/Twitter
+本项目基于 [giacomov/arxiv-sanity-bot](https://github.com/giacomov/arxiv-sanity-bot) 改造而来，感谢原作者的开源贡献！
 
 ---
 
@@ -370,14 +371,12 @@ A: 不会。笔记和收藏是独立的，取消收藏后笔记仍然保留，�
 
 欢迎提交 Issue 和 Pull Request！
 
-开发日志请查看 [docs/dev-log.md](./docs/dev-log.md)
+开发日志请查看 [docs/dev-log.md](docs/dev-log.md)
 
 ---
 
 ## 许可证
 
-MIT License
+[MIT License](LICENSE)
 
----
-
-有问题？欢迎提交 [Issue](https://github.com/RollingTheRock/ai-daily-digest/issues) 或联系维护者。
+有问题？欢迎提交 Issue 或联系维护者。

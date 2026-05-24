@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="128" height="128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background rounded square -->
+  <rect x="32" y="32" width="448" height="448" rx="96" ry="96" fill="url(#bg)"/>
+  
+  <!-- Shine effect -->
+  <rect x="32" y="32" width="448" height="448" rx="96" ry="96" fill="url(#shine)"/>
+  
+  <!-- Newspaper / document shape -->
+  <rect x="120" y="100" width="272" height="312" rx="16" ry="16" fill="#ffffff"/>
+  
+  <!-- Header bar -->
+  <rect x="120" y="100" width="272" height="48" rx="16" ry="16" fill="#1a1a2e"/>
+  <rect x="120" y="132" width="272" height="16" fill="#1a1a2e"/>
+  
+  <!-- AI sparkle icon on header -->
+  <path d="M256 116 L260 128 L272 128 L262 136 L266 148 L256 140 L246 148 L250 136 L240 128 L252 128 Z" fill="#ffd700"/>
+  
+  <!-- Content lines -->
+  <rect x="152" y="168" width="208" height="12" rx="6" fill="#e2e8f0"/>
+  <rect x="152" y="196" width="160" height="12" rx="6" fill="#e2e8f0"/>
+  <rect x="152" y="224" width="192" height="12" rx="6" fill="#e2e8f0"/>
+  
+  <!-- Highlighted block -->
+  <rect x="152" y="260" width="208" height="64" rx="8" fill="#f1f5f9"/>
+  <rect x="168" y="276" width="120" height="8" rx="4" fill="#94a3b8"/>
+  <rect x="168" y="296" width="176" height="8" rx="4" fill="#cbd5e1"/>
+  
+  <!-- Bottom line -->
+  <rect x="152" y="348" width="144" height="12" rx="6" fill="#e2e8f0"/>
+  <rect x="152" y="376" width="96" height="12" rx="6" fill="#e2e8f0"/>
+  
+  <!-- Envelope icon at bottom right -->
+  <rect x="336" y="340" width="48" height="36" rx="4" fill="#667eea"/>
+  <path d="M336 344 L360 362 L384 344" stroke="#ffffff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
