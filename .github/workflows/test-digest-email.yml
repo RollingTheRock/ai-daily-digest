@@ -163,20 +163,8 @@ jobs:
                 else:
                     sender = SendGridEmailSender()
 
-                # Welcome email with real project link for star request
-                welcome_repos = [
-                    GitHubRepo(
-                        name="RollingTheRock/ai-daily-digest",
-                        url="https://github.com/RollingTheRock/ai-daily-digest",
-                        description="🤖 每天早上 8 点，自动收集并发送 AI 领域最新动态到你的邮箱。同时提供 Web 收藏夹功能，方便管理和记录学习笔记。",
-                        stars_total=42,
-                        stars_today=3,
-                        language="Python"
-                    )
-                ]
-
                 result = sender.send_digest(
-                    github_repos=welcome_repos,
+                    github_repos=github_repos,
                     hf_models=hf_models,
                     hf_datasets=hf_datasets,
                     hf_spaces=hf_spaces,
@@ -184,8 +172,8 @@ jobs:
                     blog_posts=blog_posts,
                     to_email=os.environ["TO_EMAIL"],
                     from_email=os.environ["FROM_EMAIL"],
-                    subject=f"🎉 欢迎订阅 AI 晨报 · {datetime.now().strftime('%Y-%m-%d')}",
-                    daily_insight="👋 欢迎加入 AI 晨报！从明天起，每天早上 8 点你会收到精选的 AI 资讯。如果觉得这个项目有帮助，欢迎帮我在 GitHub 上点个 ⭐，让更多人看到它！"
+                    subject=f"🧪 Test: AI Daily Digest - {datetime.now().strftime('%Y-%m-%d')}",
+                    daily_insight="This is a test email to verify the email template is working correctly. Try clicking the star and note buttons below!"
                 )
 
                 if result:
