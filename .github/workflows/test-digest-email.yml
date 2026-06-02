@@ -43,7 +43,7 @@ jobs:
         # LLM Configuration
         LLM_PROVIDER: ${{ secrets.LLM_PROVIDER || 'deepseek' }}
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEEK_API_KEY }}
+        DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         DEEPSEEK_API_BASE: ${{ secrets.DEEPSEEK_API_BASE }}
         # Email Configuration - SMTP (QQ Mail, Gmail, etc.)
         SMTP_HOST: ${{ secrets.SMTP_HOST }}

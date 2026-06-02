@@ -69,7 +69,7 @@ class SmtpEmailSender(EmailSender):
         global_top3: list[dict[str, Any]] | None = None,
     ) -> bool:
         """
-        Send a daily digest email via SMTP.
+        Send a daily digest email via SMTP with BCC support for multiple subscribers.
 
         Args:
             github_repos: List of trending GitHub repos (filtered to Top 3)
@@ -78,7 +78,8 @@ class SmtpEmailSender(EmailSender):
             hf_spaces: List of trending HF spaces (filtered to Top 3)
             arxiv_papers: List of arXiv papers with summaries (filtered to Top 3)
             blog_posts: List of recent blog posts (filtered to Top 3)
-            to_email: Recipient email address
+            to_email: Recipient email address(es). Supports comma-separated
+                      multiple addresses for BCC bulk sending.
             from_email: Sender email address
             subject: Email subject (optional)
             daily_insight: Daily insight summary from LLM
@@ -118,11 +119,18 @@ class SmtpEmailSender(EmailSender):
             global_top3=global_top3,
         )
 
+        # Parse comma-separated email addresses for BCC bulk sending
+        bcc_recipients = [addr.strip() for addr in to_email.split(",") if addr.strip()]
+        if not bcc_recipients:
+            logger.error("No valid recipient email addresses found")
+            return False
+
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = from_email
-            msg["To"] = to_email
+            # Set To header to sender (subscribers won't see each other)
+            msg["To"] = from_email
             msg.attach(MIMEText(html_content, "html", "utf-8"))
 
             server: smtplib.SMTP_SSL | smtplib.SMTP
@@ -136,11 +144,16 @@ class SmtpEmailSender(EmailSender):
             assert self.password is not None
             with server:
                 server.login(self.user, self.password)
-                server.sendmail(from_email, to_email, msg.as_string())
+                server.sendmail(from_email, bcc_recipients, msg.as_string())
 
             logger.info(
                 "Email sent successfully via SMTP",
-                extra={"to": to_email, "from": from_email, "smtp_host": self.host},
+                extra={
+                    "from": from_email,
+                    "smtp_host": self.host,
+                    "recipients_count": len(bcc_recipients),
+                    "recipients": [r[:3] + "***@" + r.split("@")[-1] for r in bcc_recipients],
+                },
             )
             return True
 
@@ -148,7 +161,11 @@ class SmtpEmailSender(EmailSender):
             logger.error(
                 f"Failed to send email via SMTP: {e}",
                 exc_info=True,
-                extra={"to": to_email, "from": from_email, "smtp_host": self.host},
+                extra={
+                    "from": from_email,
+                    "smtp_host": self.host,
+                    "recipients_count": len(bcc_recipients),
+                },
             )
             return False
 

@@ -57,6 +57,7 @@ dependencies = [
     { name = "firebase-admin" },
     { name = "httpx" },
     { name = "lxml", extra = ["html-clean"] },
+    { name = "notion-client" },
     { name = "numpy" },
     { name = "openai" },
     { name = "pandas" },
@@ -116,6 +117,7 @@ requires-dist = [
     { name = "httpx" },
     { name = "lxml", extras = ["html-clean"] },
     { name = "mock-firestore", marker = "extra == 'test'" },
+    { name = "notion-client", specifier = ">=2.0.0" },
     { name = "numpy" },
     { name = "openai" },
     { name = "pandas" },
@@ -1258,6 +1260,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/24/bf/d1bda4f6168e0b2e9e5958945e01910052158313224ada5ce1fb2e1113b8/nodeenv-1.10.0.tar.gz", hash = "sha256:996c191ad80897d076bdfba80a41994c2b47c68e224c542b48feba42ba00f8bb", size = 55611, upload-time = "2025-12-20T14:08:54.006Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/b2/d0896bdcdc8d28a7fc5717c305f1a861c26e18c05047949fb371034d98bd/nodeenv-1.10.0-py2.py3-none-any.whl", hash = "sha256:5bb13e3eed2923615535339b3c620e76779af4cb4c6a90deccc9e36b274d3827", size = 23438, upload-time = "2025-12-20T14:08:52.782Z" },
+]
+
+[[package]]
+name = "notion-client"
+version = "3.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c0/e3/4ac01384e86e2c381c21b87a0fefcdfe6d65577ae3153fad27e7e96c5d9c/notion_client-3.1.0.tar.gz", hash = "sha256:516e31326f855ec34559289b57be4e27ad656062f51f594c8f4ee3a608ee333d", size = 38781, upload-time = "2026-05-12T08:54:44.363Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/08/12645b24044301cb0d7908ec068c55c0d5724f39372891a1a27d630fdf50/notion_client-3.1.0-py2.py3-none-any.whl", hash = "sha256:7e3935f4dbc11231d8ad1fe404112e278501520342eaa35f86456f0df44a8aca", size = 23092, upload-time = "2026-05-12T08:54:43.135Z" },
 ]
 
 [[package]]

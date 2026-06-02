@@ -136,12 +136,21 @@ class SendGridEmailSender(EmailSender):
         )
 
         try:
+            # Parse comma-separated email addresses for bulk sending
+            recipients = [addr.strip() for addr in to_email.split(",") if addr.strip()]
+            if not recipients:
+                logger.error("No valid recipient email addresses found")
+                return False
+
             mail = Mail(
                 from_email=from_email,
-                to_emails=to_email,
+                to_emails=from_email,  # Send to self, actual recipients in BCC
                 subject=subject,
                 html_content=html_content,
             )
+            # Add all subscribers as BCC (hidden from each other)
+            for recipient in recipients:
+                mail.add_bcc(recipient)
 
             response = self._client.send(mail)
 
@@ -149,9 +158,10 @@ class SendGridEmailSender(EmailSender):
                 logger.info(
                     "Email sent successfully",
                     extra={
-                        "to": to_email,
                         "from": from_email,
                         "status_code": response.status_code,
+                        "recipients_count": len(recipients),
+                        "recipients": [r[:3] + "***@" + r.split("@")[-1] for r in recipients],
                     },
                 )
                 return True
@@ -159,9 +169,10 @@ class SendGridEmailSender(EmailSender):
                 logger.error(
                     "Failed to send email",
                     extra={
-                        "to": to_email,
+                        "from": from_email,
                         "status_code": response.status_code,
                         "body": response.body,
+                        "recipients_count": len(recipients),
                     },
                 )
                 return False
@@ -170,7 +181,7 @@ class SendGridEmailSender(EmailSender):
             logger.error(
                 f"Exception sending email: {e}",
                 exc_info=True,
-                extra={"to": to_email, "from": from_email},
+                extra={"from": from_email},
             )
             return False
 

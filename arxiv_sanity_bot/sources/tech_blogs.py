@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 import feedparser
+import requests
 from pydantic import BaseModel, Field
 from tenacity import (
     retry,
@@ -21,16 +22,13 @@ DEFAULT_NUM_RETRIES = 3
 DEFAULT_WAIT_TIME = 20
 
 # RSS Feed URLs for AI/ML tech blogs
+# Verified and maintained as of 2026-06-02
 TECH_BLOG_FEEDS = {
-    "OpenAI": "https://openai.com/blog/rss.xml",
-    "Anthropic": "https://www.anthropic.com/blog/rss.xml",
-    "Google AI": "https://ai.googleblog.com/feeds/posts/default",
+    "OpenAI": "https://openai.com/news/rss.xml",
+    "Google Research": "https://research.google/blog/rss/",
     "DeepMind": "https://deepmind.google/blog/rss.xml",
     "HuggingFace": "https://huggingface.co/blog/feed.xml",
-    "Pytorch": "https://pytorch.org/blog/rss.xml",
     "TensorFlow": "https://blog.tensorflow.org/feeds/posts/default",
-    "Papers with Code": "https://paperswithcode.com/rss",
-    "AI2": "https://allenai.org/blog/feed.xml",
     "Berkeley AI": "https://bair.berkeley.edu/blog/feed.xml",
 }
 
@@ -139,10 +137,21 @@ class TechBlogClient:
         reraise=True,
     )
     def _fetch_feed_with_retry(self, source: str, url: str) -> list[BlogPost]:
-        """Fetch a single RSS feed with retry logic."""
+        """Fetch a single RSS feed with retry logic.
+
+        Uses requests instead of urllib to avoid SSL issues with some feeds
+        (e.g. deepmind.google).
+        """
         logger.debug("Fetching RSS feed", extra={"source": source, "url": url})
 
-        feed = feedparser.parse(url)
+        # Use requests for better SSL/TLS compatibility than urllib
+        response = requests.get(
+            url,
+            timeout=30,
+            headers={"User-Agent": "Mozilla/5.0 (AI Daily Digest Bot)"},
+        )
+        response.raise_for_status()
+        feed = feedparser.parse(response.text)
 
         if feed.bozo and feed.bozo_exception:
             # Some feeds have parse errors but still work
