@@ -516,47 +516,27 @@ def daily_digest(
             arxiv_top3, blog_top3, tweets_top3, videos_top3
         )
         # Generate HTML preview for testing
-        _generate_html_preview(
-            github_top3, hf_models_top3, hf_datasets_top3, hf_spaces_top3,
-            arxiv_top3, blog_top3, tweets_top3, videos_top3,
-            daily_insight, tagged_contents, global_top3
-        )
+        try:
+            from arxiv_sanity_bot.email.smtp_sender import SmtpEmailSender
+            preview_sender = SmtpEmailSender(
+                host="smtp.example.com", port=465,
+                user="preview@example.com", password="preview",
+            )
+            html = preview_sender._build_html_email(
+                github_repos=github_top3, hf_models=hf_models_top3,
+                hf_datasets=hf_datasets_top3, hf_spaces=hf_spaces_top3,
+                arxiv_papers=arxiv_top3, blog_posts=blog_top3,
+                daily_insight=daily_insight, tweets=tweets_top3,
+                videos=videos_top3, all_scored_contents=tagged_contents,
+                global_top3=global_top3,
+            )
+            preview_path = "/tmp/ai-daily-digest-preview.html"
+            with open(preview_path, "w", encoding="utf-8") as f:
+                f.write(html)
+            print(f"\n📧 HTML preview saved to: {preview_path} ({len(html)} bytes)")
+        except Exception as e:
+            logger.warning(f"Could not generate HTML preview: {e}")
         return
-
-
-def _generate_html_preview(
-    github_repos, hf_models, hf_datasets, hf_spaces,
-    arxiv_papers, blog_posts, tweets, videos,
-    daily_insight, tagged_contents, global_top3
-) -> None:
-    """Generate HTML preview file in dry run mode for testing."""
-    from arxiv_sanity_bot.email.smtp_sender import SmtpEmailSender
-    try:
-        preview_sender = SmtpEmailSender(
-            host="smtp.example.com",
-            port=465,
-            user="preview@example.com",
-            password="preview",
-        )
-        html = preview_sender._build_html_email(
-            github_repos=github_repos,
-            hf_models=hf_models,
-            hf_datasets=hf_datasets,
-            hf_spaces=hf_spaces,
-            arxiv_papers=arxiv_papers,
-            blog_posts=blog_posts,
-            daily_insight=daily_insight,
-            tweets=tweets,
-            videos=videos,
-            all_scored_contents=tagged_contents,
-            global_top3=global_top3,
-        )
-        preview_path = "/tmp/ai-daily-digest-preview.html"
-        with open(preview_path, "w", encoding="utf-8") as f:
-            f.write(html)
-        print(f"\n📧 HTML preview saved to: {preview_path} ({len(html)} bytes)")
-    except Exception as e:
-        logger.warning(f"Could not generate HTML preview: {e}")
 
     # Send email
     to_email = os.environ.get("TO_EMAIL")
