@@ -75,7 +75,9 @@ TIMEZONE = ZoneInfo("UTC")
 FIREBASE_COLLECTION = "arxiv-papers"
 
 # Web integration for favorites/notes
-DIGEST_WEB_URL = "https://yourusername.github.io/ai-digest"  # Set via env var DIGEST_WEB_URL
+DIGEST_WEB_URL = (
+    "https://yourusername.github.io/ai-digest"  # Set via env var DIGEST_WEB_URL
+)
 
 # Content source configuration
 # Comma-separated list of sources to enable: arxiv, blog, github, huggingface, twitter, youtube
@@ -86,11 +88,11 @@ TWITTER_BEARER_TOKEN = ""  # Set via env var TWITTER_BEARER_TOKEN
 TWITTER_MIN_LIKES = 100  # Minimum likes threshold for tweets
 TWITTER_MAX_TWEETS_PER_USER = 5  # Max tweets per account
 TWITTER_DEFAULT_ACCOUNTS = [  # Core AI accounts to monitor
-    "_akhaliq",     # AK - AI news aggregator
-    "karpathy",     # Andrej Karpathy
-    "goodside",     # Riley Goodside - Prompt Engineering
-    "ylecun",       # Yann LeCun
-    "ai__pub",      # AI Pub
+    "_akhaliq",  # AK - AI news aggregator
+    "karpathy",  # Andrej Karpathy
+    "goodside",  # Riley Goodside - Prompt Engineering
+    "ylecun",  # Yann LeCun
+    "ai__pub",  # AI Pub
 ]
 
 # YouTube Data API settings
@@ -109,9 +111,31 @@ YOUTUBE_DEFAULT_CHANNELS = [  # Curated AI channels
 
 # Keyword filters for content relevance
 CONTENT_KEYWORDS = {
-    "core": ["LLM", "large language model", "transformer", "GPT", "Claude", "GPT-4", "GPT-4o"],
-    "multimodal": ["multimodal", "vision-language", "image generation", "diffusion", "DALL-E", "Midjourney"],
-    "agents": ["agent", "tool use", "function calling", "RAG", "retrieval", "autonomous"],
+    "core": [
+        "LLM",
+        "large language model",
+        "transformer",
+        "GPT",
+        "Claude",
+        "GPT-4",
+        "GPT-4o",
+    ],
+    "multimodal": [
+        "multimodal",
+        "vision-language",
+        "image generation",
+        "diffusion",
+        "DALL-E",
+        "Midjourney",
+    ],
+    "agents": [
+        "agent",
+        "tool use",
+        "function calling",
+        "RAG",
+        "retrieval",
+        "autonomous",
+    ],
     "training": ["fine-tuning", "RLHF", "alignment", "safety", "training", "inference"],
 }
 

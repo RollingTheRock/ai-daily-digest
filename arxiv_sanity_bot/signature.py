@@ -1,10 +1,13 @@
 """URL signature generation and verification for favorite/notes action links."""
+
 import hmac
 import hashlib
 import os
 
 
-def generate_signature(content_id: str, date: str, secret_key: str | None = None) -> str:
+def generate_signature(
+    content_id: str, date: str, secret_key: str | None = None
+) -> str:
     """Generate HMAC-SHA256 signature for action URLs.
 
     Args:
@@ -25,15 +28,15 @@ def generate_signature(content_id: str, date: str, secret_key: str | None = None
 
     message = f"{content_id}:{date}"
     signature = hmac.new(
-        key.encode("utf-8"),
-        message.encode("utf-8"),
-        hashlib.sha256
+        key.encode("utf-8"), message.encode("utf-8"), hashlib.sha256
     ).hexdigest()[:16]
 
     return signature
 
 
-def verify_signature(content_id: str, date: str, signature: str, secret_key: str | None = None) -> bool:
+def verify_signature(
+    content_id: str, date: str, signature: str, secret_key: str | None = None
+) -> bool:
     """Verify URL signature.
 
     Args:

@@ -152,7 +152,9 @@ class SmtpEmailSender(EmailSender):
                     "from": from_email,
                     "smtp_host": self.host,
                     "recipients_count": len(bcc_recipients),
-                    "recipients": [r[:3] + "***@" + r.split("@")[-1] for r in bcc_recipients],
+                    "recipients": [
+                        r[:3] + "***@" + r.split("@")[-1] for r in bcc_recipients
+                    ],
                 },
             )
             return True
@@ -661,7 +663,9 @@ class SmtpEmailSender(EmailSender):
         for repo in repos:
             stars = f"&#11088; {repo.stars_total:,} stars" if repo.stars_total else ""
             content_id = f"github-{repo.name.replace('/', '-')}"
-            buttons = self._build_action_buttons(content_id, repo.name, repo.url, "github", today)
+            buttons = self._build_action_buttons(
+                content_id, repo.name, repo.url, "github", today
+            )
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -678,7 +682,9 @@ class SmtpEmailSender(EmailSender):
         for model in models:
             downloads = f"&#128229; {model.downloads:,}" if model.downloads else ""
             content_id = f"hf-model-{model.name.replace('/', '-')}"
-            buttons = self._build_action_buttons(content_id, model.name, model.url, "huggingface", today)
+            buttons = self._build_action_buttons(
+                content_id, model.name, model.url, "huggingface", today
+            )
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -695,7 +701,9 @@ class SmtpEmailSender(EmailSender):
         for dataset in datasets:
             downloads = f"&#128229; {dataset.downloads:,}" if dataset.downloads else ""
             content_id = f"hf-dataset-{dataset.name.replace('/', '-')}"
-            buttons = self._build_action_buttons(content_id, dataset.name, dataset.url, "huggingface", today)
+            buttons = self._build_action_buttons(
+                content_id, dataset.name, dataset.url, "huggingface", today
+            )
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -712,7 +720,9 @@ class SmtpEmailSender(EmailSender):
         for space in spaces:
             likes = f"&#10084; {space.likes:,}" if space.likes else ""
             content_id = f"hf-space-{space.name.replace('/', '-')}"
-            buttons = self._build_action_buttons(content_id, space.name, space.url, "huggingface", today)
+            buttons = self._build_action_buttons(
+                content_id, space.name, space.url, "huggingface", today
+            )
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -751,7 +761,11 @@ class SmtpEmailSender(EmailSender):
             arxiv_id = paper.get("arxiv", "")
             summary = paper.get("summary", "")
             url = paper.get("url", f"https://arxiv.org/abs/{arxiv_id}")
-            summary_html = f'<p class="card-summary">{self._escape_html(summary)}</p>' if summary else ""
+            summary_html = (
+                f'<p class="card-summary">{self._escape_html(summary)}</p>'
+                if summary
+                else ""
+            )
             content_id = f"arxiv-{arxiv_id}"
             buttons = self._build_action_buttons(content_id, title, url, "arxiv", today)
             html += f"""
@@ -770,7 +784,9 @@ class SmtpEmailSender(EmailSender):
         for post in posts:
             date_str = post.published_on.strftime("%m/%d")
             content_id = f"blog-{post.source.lower().replace(' ', '-')}-{post.title[:30].lower().replace(' ', '-')}"
-            buttons = self._build_action_buttons(content_id, post.title, post.url, "blog", today)
+            buttons = self._build_action_buttons(
+                content_id, post.title, post.url, "blog", today
+            )
             html += f"""
             <div class="content-card">
                 <div class="card-header">
@@ -855,161 +871,9 @@ class SmtpEmailSender(EmailSender):
         html += "</div>"
         return html
 
-    def _build_featured_section(self, global_top3: list[dict[str, Any]]) -> str:
-        """Build featured section with global top 3 content."""
-        if not global_top3:
-            return ""
-
-        html = """
-        <div class="section">
-            <h2 class="section-title">&#128293; 今日精选</h2>
-"""
-
-        today = datetime.now(tz=TIMEZONE).strftime("%Y-%m-%d")
-
-        for item in global_top3:
-            tag = item.get("tag", "")
-            title = item.get("title", "")
-            url = item.get("url", "")
-            reason = item.get("reason", "")
-            content_type = item.get("type", "")
-
-            # Determine tag class
-            tag_class = "tag-quick"
-            if "必看" in tag:
-                tag_class = "tag-must-read"
-            elif "深度" in tag:
-                tag_class = "tag-deep"
-
-            # Determine source tag class
-            source_class = ""
-            source_label = ""
-            if content_type == "github":
-                source_class = "github"
-                source_label = "GitHub"
-            elif content_type in ("hf_model", "hf_dataset", "hf_space"):
-                source_class = "hf"
-                source_label = "HuggingFace"
-            elif content_type == "arxiv":
-                source_class = "arxiv"
-                source_label = "arXiv"
-            elif content_type == "blog":
-                source_class = "blog"
-                source_label = "Blog"
-            elif content_type == "twitter":
-                source_class = "twitter"
-                source_label = "Twitter"
-            elif content_type == "youtube":
-                source_class = "youtube"
-                source_label = "YouTube"
-
-            # Generate action buttons
-            content_id = f"{content_type}-{title[:30].replace(' ', '-')}"
-            buttons = self._build_action_buttons(content_id, title, url, content_type, today)
-
-            html += f"""
-            <div class="featured-card">
-                <div class="featured-header">
-                    <span class="{tag_class}">{tag}</span>
-                    <span class="source-tag {source_class}">{source_label}</span>
-                </div>
-                <h3 class="featured-title"><a href="{url}">{self._escape_html(title)}</a></h3>
-                <p class="featured-reason">{self._escape_html(reason)}</p>
-                {buttons}
-            </div>
-"""
-
-        html += "</div>"
-        return html
-
-    def _build_more_section(self, all_scored_contents: list[dict[str, Any]]) -> str:
-        """Build more section with category links."""
-        if not all_scored_contents:
-            return ""
-
-        # Count by category
-        github_count = sum(1 for c in all_scored_contents if c.get("type") == "github")
-        hf_count = sum(1 for c in all_scored_contents if c.get("type") in ("hf_model", "hf_dataset", "hf_space"))
-        arxiv_count = sum(1 for c in all_scored_contents if c.get("type") == "arxiv")
-        blog_count = sum(1 for c in all_scored_contents if c.get("type") == "blog")
-        social_count = sum(1 for c in all_scored_contents if c.get("type") in ("twitter", "youtube"))
-
-        base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
-
-        html = """
-        <div class="more-section">
-            <h2 class="more-title">&#128194; 更多内容</h2>
-"""
-
-        if github_count > 0 and base_url:
-            html += f"""
-            <div class="more-item">
-                <a href="{base_url}/github">GitHub 热门仓库 <span class="more-count">{github_count} 个项目 &rarr;</span></a>
-            </div>
-"""
-        elif github_count > 0:
-            html += f"""
-            <div class="more-item">
-                <span>GitHub 热门仓库 <span class="more-count">{github_count} 个项目</span></span>
-            </div>
-"""
-
-        if hf_count > 0 and base_url:
-            html += f"""
-            <div class="more-item">
-                <a href="{base_url}/huggingface">HuggingFace 趋势 <span class="more-count">{hf_count} 个模型 &rarr;</span></a>
-            </div>
-"""
-        elif hf_count > 0:
-            html += f"""
-            <div class="more-item">
-                <span>HuggingFace 趋势 <span class="more-count">{hf_count} 个模型</span></span>
-            </div>
-"""
-
-        if arxiv_count > 0 and base_url:
-            html += f"""
-            <div class="more-item">
-                <a href="{base_url}/arxiv">arXiv 论文精选 <span class="more-count">{arxiv_count} 篇论文 &rarr;</span></a>
-            </div>
-"""
-        elif arxiv_count > 0:
-            html += f"""
-            <div class="more-item">
-                <span>arXiv 论文精选 <span class="more-count">{arxiv_count} 篇论文</span></span>
-            </div>
-"""
-
-        if blog_count > 0 and base_url:
-            html += f"""
-            <div class="more-item">
-                <a href="{base_url}/blog">技术博客 <span class="more-count">{blog_count} 篇文章 &rarr;</span></a>
-            </div>
-"""
-        elif blog_count > 0:
-            html += f"""
-            <div class="more-item">
-                <span>技术博客 <span class="more-count">{blog_count} 篇文章</span></span>
-            </div>
-"""
-
-        if social_count > 0 and base_url:
-            html += f"""
-            <div class="more-item">
-                <a href="{base_url}/social">社交动态 <span class="more-count">{social_count} 条 &rarr;</span></a>
-            </div>
-"""
-        elif social_count > 0:
-            html += f"""
-            <div class="more-item">
-                <span>社交动态 <span class="more-count">{social_count} 条</span></span>
-            </div>
-"""
-
-        html += "</div>"
-        return html
-
-    def _build_action_buttons(self, content_id: str, title: str, url: str, content_type: str, date: str) -> str:
+    def _build_action_buttons(
+        self, content_id: str, title: str, url: str, content_type: str, date: str
+    ) -> str:
         base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
         if not base_url:
             return ""
@@ -1072,7 +936,9 @@ class SmtpEmailSender(EmailSender):
 
             # Generate action buttons
             content_id = f"{content_type}-{title[:30].replace(' ', '-')}"
-            buttons = self._build_action_buttons(content_id, title, url, content_type, today)
+            buttons = self._build_action_buttons(
+                content_id, title, url, content_type, today
+            )
 
             html += f"""
             <div class="featured-card">
@@ -1096,10 +962,16 @@ class SmtpEmailSender(EmailSender):
 
         # Count by category
         github_count = sum(1 for c in all_scored_contents if c.get("type") == "github")
-        hf_count = sum(1 for c in all_scored_contents if c.get("type") in ("hf_model", "hf_dataset", "hf_space"))
+        hf_count = sum(
+            1
+            for c in all_scored_contents
+            if c.get("type") in ("hf_model", "hf_dataset", "hf_space")
+        )
         arxiv_count = sum(1 for c in all_scored_contents if c.get("type") == "arxiv")
         blog_count = sum(1 for c in all_scored_contents if c.get("type") == "blog")
-        social_count = sum(1 for c in all_scored_contents if c.get("type") in ("twitter", "youtube"))
+        social_count = sum(
+            1 for c in all_scored_contents if c.get("type") in ("twitter", "youtube")
+        )
 
         base_url = os.environ.get("DIGEST_WEB_URL", "").rstrip("/")
 
@@ -1180,4 +1052,9 @@ class SmtpEmailSender(EmailSender):
     def _escape_html(text: str) -> str:
         if not text:
             return ""
-        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+        return (
+            text.replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace('"', "&quot;")
+        )

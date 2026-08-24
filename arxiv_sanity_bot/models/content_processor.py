@@ -25,9 +25,7 @@ class ContentProcessor:
             self._client = OpenAI()
         return self._client
 
-    def _fallback_scoring(
-        self, contents: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def _fallback_scoring(self, contents: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Fallback scoring when AI scoring fails.
 
@@ -81,7 +79,9 @@ class ContentProcessor:
             item_copy["reason"] = reason
             results.append(item_copy)
 
-        logger.warning(f"Fallback scoring applied to {len(contents)} items (AI scoring failed)")
+        logger.warning(
+            f"Fallback scoring applied to {len(contents)} items (AI scoring failed)"
+        )
         return results
 
     def score_and_tag_contents(
@@ -164,21 +164,23 @@ class ContentProcessor:
                 # Validate and apply scores
                 if isinstance(scores_data, list) and len(scores_data) == len(contents):
                     results = []
-                    for i, (item, score_info) in enumerate(zip(contents, scores_data), 1):
+                    for i, (item, score_info) in enumerate(
+                        zip(contents, scores_data), 1
+                    ):
                         # Validate index matches expected position
                         if score_info.get("index") != i:
-                            logger.debug(f"Index mismatch at position {i}: expected {i}, got {score_info.get('index')}")
+                            logger.debug(
+                                f"Index mismatch at position {i}: expected {i}, got {score_info.get('index')}"
+                            )
                         item_copy = item.copy()
                         item_copy["score"] = score_info.get("score", 5)
                         item_copy["tag"] = score_info.get("tag", "📖 深度")
-                        item_copy["reason"] = score_info.get(
-                            "reason", "值得关注的内容"
-                        )
+                        item_copy["reason"] = score_info.get("reason", "值得关注的内容")
                         results.append(item_copy)
                     return results
                 else:
                     logger.warning(
-                        f"AI scoring returned invalid format or length mismatch, using fallback"
+                        "AI scoring returned invalid format or length mismatch, using fallback"
                     )
                     return self._fallback_scoring(contents)
 
@@ -356,7 +358,9 @@ class ContentProcessor:
                 "arxiv": 0,
             }
         else:
-            min_score_by_type = {t: min_score for t in ["twitter", "youtube", "blog", "arxiv"]}
+            min_score_by_type = {
+                t: min_score for t in ["twitter", "youtube", "blog", "arxiv"]
+            }
 
         filtered: list[ContentItem] = []
         for item in items:
@@ -480,7 +484,9 @@ class ContentProcessor:
         try:
             response = self._get_client()._call_openai(history)
             is_relevant: bool = bool(response and "YES" in response.upper())
-            logger.debug(f"LLM relevance check for '{item.title[:30]}...': {is_relevant}")
+            logger.debug(
+                f"LLM relevance check for '{item.title[:30]}...': {is_relevant}"
+            )
             return is_relevant
         except Exception as e:
             logger.warning(f"LLM relevance check failed: {e}")

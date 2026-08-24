@@ -54,9 +54,9 @@ class ContentItem(BaseModel):
     id: str = Field(..., description="内容唯一标识")
     title: str = Field(..., description="内容标题")
     source: str = Field(..., description="来源名称（如 'OpenAI', '@karpathy'）")
-    source_type: Literal["arxiv", "github", "huggingface", "blog", "twitter", "youtube"] = Field(
-        ..., description="内容类型"
-    )
+    source_type: Literal[
+        "arxiv", "github", "huggingface", "blog", "twitter", "youtube"
+    ] = Field(..., description="内容类型")
     url: str = Field(..., description="内容链接")
     published_on: datetime = Field(..., description="发布时间")
     author: str = Field(default="", description="作者名称")

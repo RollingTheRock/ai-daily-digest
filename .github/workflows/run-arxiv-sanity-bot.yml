@@ -52,12 +52,12 @@ jobs:
         # Content source configuration
         CONTENT_SOURCES: ${{ secrets.CONTENT_SOURCES || 'arxiv,blog' }}
         FIREBASE_CREDENTIALS: ${{ secrets.FIREBASE_CREDENTIALS }}
+        # Time window in hours (defaults apply for scheduled runs without inputs)
+        WINDOW_START: ${{ inputs.window_start || '168' }}
+        WINDOW_STOP: ${{ inputs.window_stop || '0' }}
       run: |
-        # Note: Bot always fetches 7 days from APIs, then filters by time window
-        if [ ${{ inputs.window_start }} != "" ]; then
-            uv run arxiv-sanity-bot --window_start ${{ inputs.window_start }} --window_stop ${{ inputs.window_stop }}
-        else
-            echo "Using default window: 1 week (168 hours) ago to now"
-            uv run arxiv-sanity-bot --window_start 168 --window_stop 0
-        fi
+        # Note: Bot always fetches 7 days from APIs, then filters by time window.
+        # `bot` is the subcommand of the click group (see cli/arxiv_sanity_bot.py).
+        echo "Using window: $WINDOW_START hours ago to $WINDOW_STOP hours ago"
+        uv run arxiv-sanity-bot bot --window_start "$WINDOW_START" --window_stop "$WINDOW_STOP"
 

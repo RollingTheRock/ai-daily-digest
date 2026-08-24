@@ -161,7 +161,9 @@ class SendGridEmailSender(EmailSender):
                         "from": from_email,
                         "status_code": response.status_code,
                         "recipients_count": len(recipients),
-                        "recipients": [r[:3] + "***@" + r.split("@")[-1] for r in recipients],
+                        "recipients": [
+                            r[:3] + "***@" + r.split("@")[-1] for r in recipients
+                        ],
                     },
                 )
                 return True
@@ -420,12 +422,12 @@ class SendGridEmailSender(EmailSender):
             star_url = f"{base_url}/star?id={quote(content_id, safe='')}&title={quote(title, safe='')}&url={quote(url, safe='')}&type={content_type}&date={date}&t={signature}"
             note_url = f"{base_url}/note?id={quote(content_id, safe='')}&title={quote(title, safe='')}&url={quote(url, safe='')}&type={content_type}&date={date}&t={signature}"
 
-            return f'''
+            return f"""
                 <div class="card-actions">
                     <a href="{star_url}" class="btn btn-star" target="_blank">&#9733; Star</a>
                     <a href="{note_url}" class="btn btn-note" target="_blank">&#9998; Note</a>
                 </div>
-            '''
+            """
         except Exception as e:
             logger.warning(f"Failed to generate action buttons: {e}")
             return ""

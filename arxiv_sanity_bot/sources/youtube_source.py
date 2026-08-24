@@ -29,11 +29,27 @@ DEFAULT_YOUTUBE_CHANNELS = [
 
 # AI-related keywords for filtering video titles/descriptions
 AI_KEYWORDS = [
-    "AI", "artificial intelligence", "machine learning", "deep learning",
-    "LLM", "large language model", "GPT", "Claude", "transformer",
-    "neural network", "computer vision", "NLP", "multimodal",
-    "reinforcement learning", "diffusion", "stable diffusion",
-    "fine-tuning", "training", "model", "paper", "research",
+    "AI",
+    "artificial intelligence",
+    "machine learning",
+    "deep learning",
+    "LLM",
+    "large language model",
+    "GPT",
+    "Claude",
+    "transformer",
+    "neural network",
+    "computer vision",
+    "NLP",
+    "multimodal",
+    "reinforcement learning",
+    "diffusion",
+    "stable diffusion",
+    "fine-tuning",
+    "training",
+    "model",
+    "paper",
+    "research",
 ]
 
 DEFAULT_NUM_RETRIES = 3
@@ -45,6 +61,7 @@ DEFAULT_MAX_VIDEOS_PER_CHANNEL = 3
 
 class YouTubeError(Exception):
     """Exception raised for YouTube API errors."""
+
     pass
 
 
@@ -88,6 +105,7 @@ class YouTubeClient:
             key = self.api_key
             if not key:
                 import os
+
                 key = os.environ.get("YOUTUBE_API_KEY", "")
 
             if not key:
@@ -96,7 +114,9 @@ class YouTubeClient:
                     "Set YOUTUBE_API_KEY environment variable."
                 )
 
-            self._client = build("youtube", "v3", developerKey=key, cache_discovery=False)
+            self._client = build(
+                "youtube", "v3", developerKey=key, cache_discovery=False
+            )
             logger.debug("Initialized YouTube API client")
 
         return self._client
@@ -161,7 +181,9 @@ class YouTubeClient:
         # Sort by engagement score (views), highest first
         all_videos.sort(key=lambda v: v.engagement_score, reverse=True)
 
-        logger.info(f"Total videos fetched: {len(all_videos)} from {len(channels)} channels")
+        logger.info(
+            f"Total videos fetched: {len(all_videos)} from {len(channels)} channels"
+        )
         return all_videos
 
     def _fetch_channel_videos(
@@ -177,10 +199,14 @@ class YouTubeClient:
         """Fetch videos from a single channel."""
         try:
             # Get the channel's uploads playlist ID
-            channel_response = client.channels().list(
-                part="snippet,contentDetails",
-                id=channel_id,
-            ).execute()
+            channel_response = (
+                client.channels()
+                .list(
+                    part="snippet,contentDetails",
+                    id=channel_id,
+                )
+                .execute()
+            )
 
             if not channel_response.get("items"):
                 logger.warning(f"Channel {channel_id} not found")
@@ -190,14 +216,20 @@ class YouTubeClient:
             channel_name = channel_info["snippet"]["title"]
 
             # Get uploads playlist ID
-            uploads_playlist_id = channel_info["contentDetails"]["relatedPlaylists"]["uploads"]
+            uploads_playlist_id = channel_info["contentDetails"]["relatedPlaylists"][
+                "uploads"
+            ]
 
             # Fetch recent videos from uploads playlist
-            videos_response = client.playlistItems().list(
-                part="snippet,contentDetails",
-                playlistId=uploads_playlist_id,
-                maxResults=min(max_results * 3, 20),  # Fetch extra to filter
-            ).execute()
+            videos_response = (
+                client.playlistItems()
+                .list(
+                    part="snippet,contentDetails",
+                    playlistId=uploads_playlist_id,
+                    maxResults=min(max_results * 3, 20),  # Fetch extra to filter
+                )
+                .execute()
+            )
 
             if not videos_response.get("items"):
                 return []
@@ -216,10 +248,14 @@ class YouTubeClient:
 
             # Batch fetch video statistics and details
             if video_ids:
-                stats_response = client.videos().list(
-                    part="snippet,statistics,contentDetails",
-                    id=",".join(video_ids),
-                ).execute()
+                stats_response = (
+                    client.videos()
+                    .list(
+                        part="snippet,statistics,contentDetails",
+                        id=",".join(video_ids),
+                    )
+                    .execute()
+                )
 
                 for video_data in stats_response.get("items", []):
                     try:
@@ -265,6 +301,7 @@ class YouTubeClient:
         if published_at_str:
             try:
                 from dateutil import parser
+
                 published_at = parser.isoparse(published_at_str)
             except Exception:
                 published_at = datetime.now(tz=TIMEZONE)
@@ -314,9 +351,15 @@ class YouTubeClient:
             source=channel_name,
             source_type="youtube",
             url=video_url,
-            published_on=published_at.replace(tzinfo=TIMEZONE) if published_at.tzinfo is None else published_at,
+            published_on=(
+                published_at.replace(tzinfo=TIMEZONE)
+                if published_at.tzinfo is None
+                else published_at
+            ),
             author=channel_name,
-            summary=description[:300] + "..." if len(description) > 300 else description,
+            summary=(
+                description[:300] + "..." if len(description) > 300 else description
+            ),
             content=description,
             engagement_score=view_count,
             metadata={

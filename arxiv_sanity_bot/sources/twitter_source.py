@@ -19,11 +19,11 @@ logger = get_logger(__name__)
 
 # Core AI Twitter accounts to monitor (as specified by user)
 DEFAULT_TWITTER_SOURCES = [
-    "_akhaliq",     # AK - AI news aggregator
-    "karpathy",     # Andrej Karpathy
-    "goodside",     # Riley Goodside - Prompt Engineering
-    "ylecun",       # Yann LeCun
-    "ai__pub",      # AI Pub
+    "_akhaliq",  # AK - AI news aggregator
+    "karpathy",  # Andrej Karpathy
+    "goodside",  # Riley Goodside - Prompt Engineering
+    "ylecun",  # Yann LeCun
+    "ai__pub",  # AI Pub
 ]
 
 DEFAULT_NUM_RETRIES = 3
@@ -34,6 +34,7 @@ DEFAULT_MAX_TWEETS_PER_USER = 5
 
 class TwitterError(Exception):
     """Exception raised for Twitter API errors."""
+
     pass
 
 
@@ -73,6 +74,7 @@ class TwitterClient:
             token = self.bearer_token
             if not token:
                 import os
+
                 token = os.environ.get("TWITTER_BEARER_TOKEN", "")
 
             if not token:
@@ -145,7 +147,9 @@ class TwitterClient:
         # Sort by engagement score (likes), highest first
         all_tweets.sort(key=lambda t: t.engagement_score, reverse=True)
 
-        logger.info(f"Total tweets fetched: {len(all_tweets)} from {len(accounts)} accounts")
+        logger.info(
+            f"Total tweets fetched: {len(all_tweets)} from {len(accounts)} accounts"
+        )
         return all_tweets
 
     def _fetch_user_tweets(
@@ -172,7 +176,12 @@ class TwitterClient:
             tweets_response = client.get_users_tweets(
                 id=user_id,
                 max_results=min(max_results * 2, 20),  # Fetch extra to filter
-                tweet_fields=["created_at", "public_metrics", "referenced_tweets", "entities"],
+                tweet_fields=[
+                    "created_at",
+                    "public_metrics",
+                    "referenced_tweets",
+                    "entities",
+                ],
                 exclude=["retweets"] if exclude_replies else None,
             )
 
@@ -219,6 +228,7 @@ class TwitterClient:
         if created_at:
             if isinstance(created_at, str):
                 from dateutil import parser
+
                 created_at = parser.isoparse(created_at)
             if created_at.replace(tzinfo=TIMEZONE) < cutoff_date:
                 return None
@@ -253,7 +263,11 @@ class TwitterClient:
             source=f"@{username}",
             source_type="twitter",
             url=tweet_url,
-            published_on=created_at.replace(tzinfo=TIMEZONE) if created_at else datetime.now(tz=TIMEZONE),
+            published_on=(
+                created_at.replace(tzinfo=TIMEZONE)
+                if created_at
+                else datetime.now(tz=TIMEZONE)
+            ),
             author=user_display_name,
             summary=tweet.text[:200] + "..." if len(tweet.text) > 200 else tweet.text,
             content=tweet.text,

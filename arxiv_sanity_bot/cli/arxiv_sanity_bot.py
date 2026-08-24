@@ -346,86 +346,102 @@ def daily_digest(
 
     # GitHub repos
     for repo in github_repos:
-        all_contents.append({
-            "type": "github",
-            "title": repo.name,
-            "stars": repo.stars_total or 0,
-            "description": (repo.description or "")[:200],
-            "_original": repo,
-        })
+        all_contents.append(
+            {
+                "type": "github",
+                "title": repo.name,
+                "stars": repo.stars_total or 0,
+                "description": (repo.description or "")[:200],
+                "_original": repo,
+            }
+        )
 
     # HF Models
     for model in hf_models:
-        all_contents.append({
-            "type": "hf_model",
-            "title": model.name,
-            "stars": model.downloads or model.likes or 0,
-            "description": (model.description or "")[:200],
-            "_original": model,
-        })
+        all_contents.append(
+            {
+                "type": "hf_model",
+                "title": model.name,
+                "stars": model.downloads or model.likes or 0,
+                "description": (model.description or "")[:200],
+                "_original": model,
+            }
+        )
 
     # HF Datasets
     for dataset in hf_datasets:
-        all_contents.append({
-            "type": "hf_dataset",
-            "title": dataset.name,
-            "stars": dataset.downloads or dataset.likes or 0,
-            "description": (dataset.description or "")[:200],
-            "_original": dataset,
-        })
+        all_contents.append(
+            {
+                "type": "hf_dataset",
+                "title": dataset.name,
+                "stars": dataset.downloads or dataset.likes or 0,
+                "description": (dataset.description or "")[:200],
+                "_original": dataset,
+            }
+        )
 
     # HF Spaces
     for space in hf_spaces:
-        all_contents.append({
-            "type": "hf_space",
-            "title": space.name,
-            "stars": space.likes or 0,
-            "description": (space.description or "")[:200],
-            "_original": space,
-        })
+        all_contents.append(
+            {
+                "type": "hf_space",
+                "title": space.name,
+                "stars": space.likes or 0,
+                "description": (space.description or "")[:200],
+                "_original": space,
+            }
+        )
 
     # arXiv papers
     for paper in arxiv_papers:
-        all_contents.append({
-            "type": "arxiv",
-            "title": paper.get("title", ""),
-            "stars": paper.get("score", 0),
-            "description": (paper.get("abstract", ""))[:200],
-            "_original": paper,
-        })
+        all_contents.append(
+            {
+                "type": "arxiv",
+                "title": paper.get("title", ""),
+                "stars": paper.get("score", 0),
+                "description": (paper.get("abstract", ""))[:200],
+                "_original": paper,
+            }
+        )
 
     # Blog posts
     for post in blog_posts:
-        all_contents.append({
-            "type": "blog",
-            "title": post.title,
-            "stars": 0,
-            "description": (post.summary or "")[:200],
-            "_original": post,
-        })
+        all_contents.append(
+            {
+                "type": "blog",
+                "title": post.title,
+                "stars": 0,
+                "description": (post.summary or "")[:200],
+                "_original": post,
+            }
+        )
 
     # Tweets
     for tweet in tweets:
-        all_contents.append({
-            "type": "twitter",
-            "title": tweet.title or f"@{tweet.source}",
-            "stars": tweet.engagement_score or 0,
-            "description": (tweet.content or tweet.summary or "")[:200],
-            "_original": tweet,
-        })
+        all_contents.append(
+            {
+                "type": "twitter",
+                "title": tweet.title or f"@{tweet.source}",
+                "stars": tweet.engagement_score or 0,
+                "description": (tweet.content or tweet.summary or "")[:200],
+                "_original": tweet,
+            }
+        )
 
     # YouTube videos
     for video in videos:
         view_count = 0
         if video.metadata and "view_count" in video.metadata:
             view_count = int(video.metadata.get("view_count", 0))
-        all_contents.append({
-            "type": "youtube",
-            "title": video.title,
-            "stars": view_count,
-            "description": (video.summary or "")[:200],
-            "_original": video,
-        })
+        all_contents.append(
+            {
+                "type": "youtube",
+                "title": video.title,
+                "stars": view_count,
+                "description": (video.summary or "")[:200],
+                "_original": video,
+            }
+        )
 
     logger.info(f"Merged {len(all_contents)} items for AI scoring")
 
@@ -444,7 +460,11 @@ def daily_digest(
             "Global Top 3 selected",
             extra={
                 "top3": [
-                    {"title": c.get("title", "")[:50], "score": c.get("score"), "tag": c.get("tag")}
+                    {
+                        "title": c.get("title", "")[:50],
+                        "score": c.get("score"),
+                        "tag": c.get("tag"),
+                    }
                     for c in global_top3
                 ]
             },
@@ -465,7 +485,14 @@ def daily_digest(
         videos_top3 = get_top3_by_type(tagged_contents, "youtube")
 
         # Convert arXiv back to dict format
-        arxiv_top3 = [item if isinstance(item, dict) else {"arxiv": "", "title": "", "abstract": ""} for item in arxiv_top3_raw]
+        arxiv_top3 = [
+            (
+                item
+                if isinstance(item, dict)
+                else {"arxiv": "", "title": "", "abstract": ""}
+            )
+            for item in arxiv_top3_raw
+        ]
 
         logger.info(
             "Top 3 by type extracted",
@@ -499,10 +526,12 @@ def daily_digest(
     logger.info("Generating daily insight...")
     # Build top3_context from global top 3
     if global_top3:
-        top3_context = "\n".join([
-            f"- [{c.get('tag', '')}] {c.get('title', '')}: {c.get('reason', '')}"
-            for c in global_top3
-        ])
+        top3_context = "\n".join(
+            [
+                f"- [{c.get('tag', '')}] {c.get('title', '')}: {c.get('reason', '')}"
+                for c in global_top3
+            ]
+        )
     else:
         top3_context = ""
 
@@ -512,22 +541,38 @@ def daily_digest(
     if dry:
         logger.info("DRY RUN: Would send email with collected data")
         _print_digest_summary(
-            github_top3, hf_models_top3, hf_datasets_top3, hf_spaces_top3,
-            arxiv_top3, blog_top3, tweets_top3, videos_top3
+            github_top3,
+            hf_models_top3,
+            hf_datasets_top3,
+            hf_spaces_top3,
+            arxiv_top3,
+            blog_top3,
+            tweets_top3,
+            videos_top3,
         )
         # Generate HTML preview for testing
         try:
-            from arxiv_sanity_bot.email.smtp_sender import SmtpEmailSender
+            # NOTE: SmtpEmailSender is imported at module level above; do NOT
+            # re-import it here — a function-local import would shadow the
+            # module-level name for the whole daily_digest() scope and cause
+            # UnboundLocalError in the non-dry-run path below.
             preview_sender = SmtpEmailSender(
-                host="smtp.example.com", port=465,
-                user="preview@example.com", password="preview",
+                host="smtp.example.com",
+                port=465,
+                user="preview@example.com",
+                password="preview",
             )
             html = preview_sender._build_html_email(
-                github_repos=github_top3, hf_models=hf_models_top3,
-                hf_datasets=hf_datasets_top3, hf_spaces=hf_spaces_top3,
-                arxiv_papers=arxiv_top3, blog_posts=blog_top3,
-                daily_insight=daily_insight, tweets=tweets_top3,
-                videos=videos_top3, all_scored_contents=tagged_contents,
+                github_repos=github_top3,
+                hf_models=hf_models_top3,
+                hf_datasets=hf_datasets_top3,
+                hf_spaces=hf_spaces_top3,
+                arxiv_papers=arxiv_top3,
+                blog_posts=blog_top3,
+                daily_insight=daily_insight,
+                tweets=tweets_top3,
+                videos=videos_top3,
+                all_scored_contents=tagged_contents,
                 global_top3=global_top3,
             )
             preview_path = "/tmp/ai-daily-digest-preview.html"
@@ -726,7 +771,14 @@ def _fetch_youtube_content() -> list:
 
 
 def _print_digest_summary(
-    github_repos, hf_models, hf_datasets, hf_spaces, arxiv_papers, blog_posts, tweets=None, videos=None
+    github_repos,
+    hf_models,
+    hf_datasets,
+    hf_spaces,
+    arxiv_papers,
+    blog_posts,
+    tweets=None,
+    videos=None,
 ) -> None:
     """Print summary of digest content for dry run."""
     print("\n" + "=" * 60)
@@ -795,12 +847,20 @@ def _send_to_notion_if_enabled(
     """
     # Debug: Log environment variable status
     output_notion_val = os.environ.get("OUTPUT_NOTION", "")
-    logger.info(f"[Notion] Checking configuration: OUTPUT_NOTION={repr(output_notion_val)}")
-    logger.info(f"[Notion] NOTION_TOKEN configured: {bool(os.environ.get('NOTION_TOKEN'))}")
-    logger.info(f"[Notion] NOTION_DATABASE_ID configured: {bool(os.environ.get('NOTION_DATABASE_ID'))}")
+    logger.info(
+        f"[Notion] Checking configuration: OUTPUT_NOTION={repr(output_notion_val)}"
+    )
+    logger.info(
+        f"[Notion] NOTION_TOKEN configured: {bool(os.environ.get('NOTION_TOKEN'))}"
+    )
+    logger.info(
+        f"[Notion] NOTION_DATABASE_ID configured: {bool(os.environ.get('NOTION_DATABASE_ID'))}"
+    )
 
     if output_notion_val.lower() != "true":
-        logger.info(f"[Notion] Skipping Notion output: OUTPUT_NOTION is not 'true' (value: {repr(output_notion_val)})")
+        logger.info(
+            f"[Notion] Skipping Notion output: OUTPUT_NOTION is not 'true' (value: {repr(output_notion_val)})"
+        )
         return
 
     logger.info("[Notion] Notion output is enabled, proceeding...")
@@ -829,28 +889,34 @@ def _send_to_notion_if_enabled(
         github_top3_dict = sorted(
             [c for c in tagged_contents if c.get("type") == "github"],
             key=lambda x: x.get("score", 0),
-            reverse=True
+            reverse=True,
         )[:3]
 
         hf_top3_dict = sorted(
-            [c for c in tagged_contents if c.get("type") in ("hf_model", "hf_dataset", "hf_space")],
+            [
+                c
+                for c in tagged_contents
+                if c.get("type") in ("hf_model", "hf_dataset", "hf_space")
+            ],
             key=lambda x: x.get("score", 0),
-            reverse=True
+            reverse=True,
         )[:3]
 
         arxiv_top3_dict = sorted(
             [c for c in tagged_contents if c.get("type") == "arxiv"],
             key=lambda x: x.get("score", 0),
-            reverse=True
+            reverse=True,
         )[:3]
 
         blog_top3_dict = sorted(
             [c for c in tagged_contents if c.get("type") == "blog"],
             key=lambda x: x.get("score", 0),
-            reverse=True
+            reverse=True,
         )[:3]
 
-        logger.info(f"[Notion] Extracted from tagged_contents: GitHub={len(github_top3_dict)}, HF={len(hf_top3_dict)}, arXiv={len(arxiv_top3_dict)}, Blog={len(blog_top3_dict)}")
+        logger.info(
+            f"[Notion] Extracted from tagged_contents: GitHub={len(github_top3_dict)}, HF={len(hf_top3_dict)}, arXiv={len(arxiv_top3_dict)}, Blog={len(blog_top3_dict)}"
+        )
 
         digest_data = {
             "date": today_str,

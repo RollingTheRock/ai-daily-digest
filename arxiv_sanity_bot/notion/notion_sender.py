@@ -87,7 +87,6 @@ class NotionSender:
         hf_top3 = digest_data.get("hf_top3", [])
         arxiv_top3 = digest_data.get("arxiv_top3", [])
         blog_top3 = digest_data.get("blog_top3", [])
-        all_scored_contents = digest_data.get("all_scored_contents", [])
 
         # Calculate derived fields
         tags = self._extract_tags(top3)
