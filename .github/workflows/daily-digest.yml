@@ -22,6 +22,10 @@ on:
         description: "Number of arXiv papers to include"
         default: "5"
         type: string
+      to_email:
+        description: "Override recipients (comma-separated). Leave empty to use the subscriber list"
+        default: ""
+        type: string
 
 jobs:
   daily_digest:
@@ -112,9 +116,15 @@ jobs:
         NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
         NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
         OUTPUT_NOTION: ${{ secrets.OUTPUT_NOTION || 'false' }}
+        TO_EMAIL_OVERRIDE: ${{ inputs.to_email }}
       run: |
-        # Use the subscriber list from the private repo if loaded, otherwise the TO_EMAIL secret
-        export TO_EMAIL="${TO_EMAIL:-$TO_EMAIL_SECRET}"
+        # Recipient selection: explicit override > subscriber repo > TO_EMAIL secret
+        if [ -n "$TO_EMAIL_OVERRIDE" ]; then
+          export TO_EMAIL="$TO_EMAIL_OVERRIDE"
+          echo "Using override recipients (not printed to public logs)"
+        else
+          export TO_EMAIL="${TO_EMAIL:-$TO_EMAIL_SECRET}"
+        fi
         echo "Running AI Daily Digest..."
         echo "LLM Provider: $LLM_PROVIDER"
 
