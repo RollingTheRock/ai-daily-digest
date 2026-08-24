@@ -1,0 +1,10 @@
+name: Repro A (schedule+dispatch, no inputs)
+on:
+  schedule:
+    - cron: "30 16 * * *"
+  workflow_dispatch:
+jobs:
+  job:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "repro-a ok"
