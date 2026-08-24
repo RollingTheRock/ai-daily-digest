@@ -48,19 +48,31 @@ jobs:
 
     - name: Load subscriber list from private repo
       env:
+        # Prefer the SSH deploy key; fall back to a fine-grained PAT, then to
+        # the TO_EMAIL secret.
+        SUBSCRIBERS_REPO_SSH_KEY: ${{ secrets.SUBSCRIBERS_REPO_SSH_KEY }}
         SUBSCRIBERS_REPO_TOKEN: ${{ secrets.SUBSCRIBERS_REPO_TOKEN }}
       run: |
         # Subscribers live in the private repo RollingTheRock/ai-daily-digest-subscribers
-        # (one email per line, '#' comments ignored). Falls back to the TO_EMAIL
-        # secret when SUBSCRIBERS_REPO_TOKEN is not configured yet.
-        if [ -n "$SUBSCRIBERS_REPO_TOKEN" ]; then
+        # (one email per line, '#' comments ignored).
+        if [ -n "$SUBSCRIBERS_REPO_SSH_KEY" ]; then
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SUBSCRIBERS_REPO_SSH_KEY" > ~/.ssh/subscribers_key
+          chmod 600 ~/.ssh/subscribers_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+          GIT_SSH_COMMAND="ssh -i ~/.ssh/subscribers_key -o IdentitiesOnly=yes" \
+            git clone --depth 1 git@github.com:RollingTheRock/ai-daily-digest-subscribers.git subscribers-repo >/dev/null 2>&1
+        elif [ -n "$SUBSCRIBERS_REPO_TOKEN" ]; then
           git clone --depth 1 "https://x-access-token:${SUBSCRIBERS_REPO_TOKEN}@github.com/RollingTheRock/ai-daily-digest-subscribers.git" subscribers-repo >/dev/null 2>&1
+        fi
+
+        if [ -d subscribers-repo ]; then
           EMAILS=$(grep -v '^\s*#' subscribers-repo/subscribers.txt | grep -v '^\s*$' | tr -d ' \r' | paste -sd, -)
           COUNT=$(printf '%s' "$EMAILS" | tr ',' '\n' | grep -c . || true)
           echo "Loaded ${COUNT:-0} subscribers from private repo"
           echo "TO_EMAIL=$EMAILS" >> "$GITHUB_ENV"
         else
-          echo "SUBSCRIBERS_REPO_TOKEN not set - falling back to TO_EMAIL secret"
+          echo "Private repo not accessible - falling back to TO_EMAIL secret"
         fi
 
     - name: Run AI Daily Digest
