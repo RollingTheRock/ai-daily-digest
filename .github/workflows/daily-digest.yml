@@ -46,6 +46,23 @@ jobs:
       run: |
         uv sync --no-cache --extra twitter --extra youtube
 
+    - name: Load subscriber list from private repo
+      env:
+        SUBSCRIBERS_REPO_TOKEN: ${{ secrets.SUBSCRIBERS_REPO_TOKEN }}
+      run: |
+        # Subscribers live in the private repo RollingTheRock/ai-daily-digest-subscribers
+        # (one email per line, '#' comments ignored). Falls back to the TO_EMAIL
+        # secret when SUBSCRIBERS_REPO_TOKEN is not configured yet.
+        if [ -n "$SUBSCRIBERS_REPO_TOKEN" ]; then
+          git clone --depth 1 "https://x-access-token:${SUBSCRIBERS_REPO_TOKEN}@github.com/RollingTheRock/ai-daily-digest-subscribers.git" subscribers-repo >/dev/null 2>&1
+          EMAILS=$(grep -v '^\s*#' subscribers-repo/subscribers.txt | grep -v '^\s*$' | tr -d ' \r' | paste -sd, -)
+          COUNT=$(printf '%s' "$EMAILS" | tr ',' '\n' | grep -c . || true)
+          echo "Loaded ${COUNT:-0} subscribers from private repo"
+          echo "TO_EMAIL=$EMAILS" >> "$GITHUB_ENV"
+        else
+          echo "SUBSCRIBERS_REPO_TOKEN not set - falling back to TO_EMAIL secret"
+        fi
+
     - name: Run AI Daily Digest
       env:
         # LLM Configuration
@@ -59,7 +76,8 @@ jobs:
         SMTP_USER: ${{ secrets.SMTP_USER }}
         SMTP_PASS: ${{ secrets.SMTP_PASS }}
         FROM_EMAIL: ${{ secrets.FROM_EMAIL }}
-        TO_EMAIL: ${{ secrets.TO_EMAIL }}
+        # Fallback recipient list if the private subscribers repo is not configured
+        TO_EMAIL_SECRET: ${{ secrets.TO_EMAIL }}
         # Alternative: SendGrid
         SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
         # Firebase (for arXiv paper tracking)
@@ -83,6 +101,8 @@ jobs:
         NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
         OUTPUT_NOTION: ${{ secrets.OUTPUT_NOTION || 'false' }}
       run: |
+        # Use the subscriber list from the private repo if loaded, otherwise the TO_EMAIL secret
+        export TO_EMAIL="${TO_EMAIL:-$TO_EMAIL_SECRET}"
         echo "Running AI Daily Digest..."
         echo "LLM Provider: $LLM_PROVIDER"
 
