@@ -1,8 +1,9 @@
 name: Run Arxiv Sanity Bot
 
 on:
-  schedule:
-    - cron: "30 16 * * *"
+  # Schedule disabled: legacy Twitter bot (secrets TWITTER_ACCESS_TOKEN_SECRET /
+  # FIREBASE_CREDENTIALS were never configured). Can still be run manually via
+  # workflow_dispatch once the required secrets are set.
   workflow_dispatch:
     inputs:
       window_start:
