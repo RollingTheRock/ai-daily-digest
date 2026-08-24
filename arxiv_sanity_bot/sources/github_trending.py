@@ -177,27 +177,17 @@ class GitHubTrendingClient:
         stars_total = 0
         stars_today = 0
 
-        # Find all link elements that might contain star counts
-        link_elems = article.find_all(
-            "a", class_="Link Link--muted d-inline-block mr-3"
-        )
-        for elem in link_elems:
-            text = elem.get_text(strip=True)
-            if (
-                "star" in text.lower()
-                or text.replace(",", "").replace(".", "").isdigit()
-            ):
-                # This is likely the star count
-                stars_text = (
-                    text.replace(",", "").replace("k", "000").replace("K", "000")
-                )
-                try:
-                    # Handle '1.2k' format
-                    if "." in stars_text and "000" in stars_text:
-                        stars_text = stars_text.replace("000", "00")
-                    stars_total = int(float(stars_text))
-                except ValueError:
-                    pass
+        # Find the total star count. GitHub changed the class list from
+        # "Link Link--muted d-inline-block mr-3" to
+        # "tmp-mr-3 Link Link--muted d-inline-block" (2026-08), so match with a
+        # CSS selector that works regardless of class order/prefixes.
+        for elem in article.select("a.Link--muted.d-inline-block"):
+            href = elem.get("href", "")
+            if href.endswith("/stargazers"):
+                stars_text = elem.get_text(strip=True).replace(",", "")
+                if stars_text.isdigit():
+                    stars_total = int(stars_text)
+                break
 
         # Look for "stars today" or similar text
         today_elem = article.find("span", class_="d-inline-block float-sm-right")
